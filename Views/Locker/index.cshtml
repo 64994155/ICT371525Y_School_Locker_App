@@ -1,0 +1,274 @@
+﻿@model ICT371525Y_School_Locker_App.Models.LockerDashboardViewModel
+
+@{
+    ViewData["Title"] = "Locker Dashboard";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Locker Dashboard</h2>
+
+    @if (Model.Students != null && Model.Students.Any())
+    {
+        foreach (var student in Model.Students)
+        {
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    Student: @student.FullName (@student.StudentId)
+                </div>
+                <div class="card-body">
+                    <div id="locker-info-@student.StudentId">
+                        <p>Loading locker info...</p>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-warning">No students found for this parent. Add one below:</div>
+    }
+
+    <!-- Add Student Form -->
+    <div class="card mt-4 shadow-sm">
+        <div class="card-header bg-secondary text-white">
+            Add Student
+        </div>
+        <div class="card-body">
+            <form asp-action="AddStudent" asp-controller="Locker" method="post">
+                <input type="hidden" name="ParentId" value="@Model.ParentId" />
+
+                <div class="form-group mb-2">
+                    <label for="StudentName">Student Name</label>
+                    <input type="text" name="StudentName" class="form-control" required />
+                </div>
+
+                <div class="form-group mb-2">
+                    <label for="SelectedSchoolId">School</label>
+                    <select name="SelectedSchoolId" class="form-control" required>
+                        <option value="">-- Select School --</option>
+                        @foreach (var school in Model.Schools)
+                        {
+                            <option value="@school.SchoolID">@school.SchoolName</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label for="SelectedGradeId">Grade</label>
+                    <select name="SelectedGradeId" class="form-control" required>
+                        <option value="">-- Select Grade --</option>
+                        @foreach (var school in Model.Schools)
+                        {
+                            if (school.Grades != null && school.Grades.Any())
+                            {
+                                foreach (var grade in school.Grades)
+                                {
+                                    <option value="@grade.GradeId">@grade.Grade</option>
+                                }
+                            }
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-success">Add Student</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const baseUrl = window.location.origin;
+            const students = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Students));
+            const loaders = {};
+
+            students.forEach(student => {
+                const studentId = student.StudentId;
+                const schoolId = student.SchoolId;
+                const gradeId = student.GradeId;
+                const container = document.getElementById(`locker-info-${studentId}`);
+
+                async function loadLockers() {
+                    try {
+                        const assignedResponse = await fetch(`${baseUrl}/Locker/AssignedLocker/${studentId}`);
+                        const assignedLockers = assignedResponse.ok ? await assignedResponse.json() : [];
+
+                        const currentYear = new Date().getFullYear();
+                        const nextYear = currentYear + 1;
+                        let html = "";
+
+                        // --- Assigned lockers ---
+                        if (assignedLockers && assignedLockers.length > 0) {
+                            html += `<h6>Assigned Lockers</h6>`;
+                            assignedLockers.forEach(l => {
+                                html += `
+                                    <div class="mb-2 p-2 border rounded">
+                                        <p><strong>Locker Number:</strong> ${l.lockerNumber ?? l.lockerId}</p>
+                                        <p><strong>Grade:</strong> ${l.gradeName} (${l.gradeNumber})</p>
+                                        <p><strong>Year:</strong> ${l.year} (${l.yearType === "current" ? "Current" : "Following"})</p>
+                                        <p><strong>Approved:</strong> ${l.isAdminApproved ? "✅ Yes" : "❌ No"}</p>
+                                        <button class="btn btn-sm btn-danger"
+                                            onclick="cancelLocker(${l.lockerId}, ${studentId}, '${l.yearType}')">
+                                            Cancel Locker
+                                        </button>
+                                    </div>`;
+                            });
+                        } else {
+                            html += `<p>No locker assigned yet.</p>`;
+                        }
+
+                        // --- Check each year ---
+                        async function checkYear(year, yearType) {
+                            if (!assignedLockers.some(l => l.yearType === yearType)) {
+                                // Step 1: Check waiting list
+                                const waitlistApi = `${baseUrl}/api/LockerWaitingList/IsUserOnWaitingList/${studentId}/${yearType}`;
+                                const waitlistResponse = await fetch(waitlistApi);
+                                const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
+
+                                if (waitlistItems && waitlistItems.length > 0) {
+                                    html += `<div class="alert alert-info mt-3">
+                                        <h6>Waiting List (${year})</h6>
+                                        ${waitlistItems.map(wl => `
+                                            <p><strong>School:</strong> ${wl.schoolName}</p>
+                                            <p><strong>Grade:</strong> ${wl.gradeName}</p>
+                                            <p><strong>Applied Date:</strong> ${new Date(wl.appliedDate).toLocaleDateString()}</p>
+                                            <button class="btn btn-sm btn-danger"
+                                                onclick="cancelWaitingList(${studentId}, ${wl.schoolId}, ${wl.gradeId}, '${yearType}')">
+                                                Cancel Waiting List
+                                            </button>
+                                        `).join("")}
+                                    </div>`;
+                                } else {
+                                    // Step 2: Available lockers
+                                    const lockerApi = `${baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
+                                    const lockerResponse = await fetch(lockerApi);
+                                    const lockers = lockerResponse.ok ? await lockerResponse.json() : [];
+
+                                    if (!lockers || lockers.length === 0) {
+                                        html += `<div class="alert alert-warning mt-3">
+                                            No lockers available for ${year}.
+                                            <button class="btn btn-sm btn-warning mt-2"
+                                                onclick="joinWaitingList(${studentId}, ${schoolId}, ${gradeId}, ${year}, '${yearType}')">
+                                                Join Waiting List (${year})
+                                            </button>
+                                        </div>`;
+                                    } else {
+                                        let table = `<h6 class="mt-3">Available Lockers for ${year}</h6>
+                                            <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Locker ID</th>
+                                                    <th>Locker Number</th>
+                                                    <th>Action</th>
+                                                </tr>
+                                            </thead><tbody>`;
+                                        lockers.forEach(locker => {
+                                            table += `<tr>
+                                                <td>${locker.lockerId}</td>
+                                                <td>${locker.lockerNumber}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary"
+                                                        onclick="applyLocker(${locker.lockerId}, ${studentId}, '${yearType}')">Apply</button>
+                                                </td>
+                                            </tr>`;
+                                        });
+                                        table += "</tbody></table>";
+                                        html += table;
+                                    }
+                                }
+                            }
+                        }
+
+                        await checkYear(currentYear, "current");
+                        if(gradeId != 24){
+                            await checkYear(nextYear, "following");
+                        }
+
+                        container.innerHTML = html || `<p>No locker info available.</p>`;
+                    } catch (err) {
+                        console.error(err);
+                        container.innerHTML = `<p class="text-danger">Error loading lockers: ${err.message}</p>`;
+                    }
+                }
+
+                loaders[studentId] = loadLockers;
+                loadLockers();
+            });
+
+            // --- Locker assignment ---
+            window.applyLocker = async function (lockerId, studentId, yearType) {
+                try {
+                    const response = await fetch(`${baseUrl}/Locker/AssignLocker`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lockerId, studentId, yearType })
+                    });
+                    if (!response.ok) throw new Error(await response.text() || "Locker assignment failed.");
+                    alert("Locker successfully assigned!");
+                    if (loaders[studentId]) loaders[studentId]();
+                } catch (err) {
+                    alert("Error: " + err.message);
+                }
+            };
+
+            // --- Cancel locker ---
+            window.cancelLocker = async function (lockerId, studentId, yearType) {
+                try {
+                    const response = await fetch(`${baseUrl}/Locker/UnassignLocker`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lockerId, studentId, yearType })
+                    });
+                    if (!response.ok) throw new Error(await response.text() || "Locker cancellation failed.");
+                    alert("Locker successfully canceled.");
+                    if (loaders[studentId]) loaders[studentId]();
+                } catch (err) {
+                    alert("Error: " + err.message);
+                }
+            };
+
+            // --- Join waiting list ---
+            window.joinWaitingList = async function (studentId, schoolId, gradeId, year, yearType) {
+                try {
+                    const payload = {
+                        studentId,
+                        schoolId,
+                        gradeId,
+                        appliedDate: new Date().toISOString(),
+                        currentYear: yearType === "current",
+                        followingYear: yearType === "following",
+                        status: true
+                    };
+                    const response = await fetch(`${baseUrl}/api/LockerWaitingList/Assign`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(await response.text() || "Failed to add to waiting list.");
+                    alert(`Student successfully added to the ${year} waiting list.`);
+                    if (loaders[studentId]) loaders[studentId]();
+                } catch (err) {
+                    alert("Error: " + err.message);
+                }
+            };
+
+            // --- Cancel waiting list ---
+            window.cancelWaitingList = async function (studentId, schoolId, gradeId, YearType) {
+                if (!confirm("Are you sure you want to cancel this waiting list request?")) return;
+                try {
+                    const response = await fetch(`${baseUrl}/api/LockerWaitingList/Unassign`, {
+                        method: "POST",  // <- use POST to send DTO body
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ studentId, schoolId, gradeId, YearType})
+                    });
+                    if (!response.ok) throw new Error(await response.text() || "Failed to cancel waiting list.");
+                    alert("Waiting list request successfully canceled.");
+                    if (loaders[studentId]) loaders[studentId]();
+                } catch (err) {
+                    alert("Error: " + err.message);
+                }
+            };
+        });
+    </script>
+}

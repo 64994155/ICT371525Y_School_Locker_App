@@ -1,0 +1,60 @@
+﻿@model ICT371525Y_School_Locker_App.Models.LockerDashboardViewModel
+
+@{
+    ViewBag.Title = "Locker Dashboard";
+}
+
+<div class="container mt-5" style="max-width: 800px;">
+    <div class="border p-4 shadow-sm rounded bg-light">
+        <h2 class="text-center mb-4"><i class="bi bi-box-seam"></i> Locker System Dashboard</h2>
+
+        <h4 class="mb-3"><i class="bi bi-bar-chart-line-fill text-primary"></i> Usage by Grade</h4>
+        <table class="table table-bordered table-striped">
+            <thead class="table-primary">
+                <tr>
+                    <th>Grade</th>
+                    <th>Lockers Assigned</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.LockerByGrade)
+                {
+                    <tr>
+                        <td>@item.Grade</td>
+                        <td>@item.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h4 class="mt-4 mb-3"><i class="bi bi-graph-up-arrow text-success"></i> Grade 8 & 11 Locker Usage</h4>
+        <table class="table table-bordered table-striped">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Parent Email</th>
+                    <th>Student School Num</th>
+                    <th>Grade</th>
+                    <th>Locker</th>
+                    <th>Assigned</th>
+                    <th>Admin Approved</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.LockerUsageGrade8and11)
+                {
+                    <tr>
+                        <td>@item.ParentEmail</td>
+                        <td>@item.StudentSchoolNumber</td>
+                        <td>@item.GradeNumber</td>
+                        <td>@item.LockerNumber</td>
+                        <td>@item.IsAssigned</td>
+                        <td>@item.IsAdminApproved</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h4 class="mt-4 mb-2"><i class="bi bi-calendar3 text-info"></i> Bookings (Jan – Oct 2025)</h4>
+        <p class="fw-bold">📦 Total Booked: @Model.LockersBookedJanToJun</p>
+    </div>
+</div>

@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICT371525Y_School_Locker_App", "ICT371525Y_School_Locker_App.csproj", "{5DB6CEF0-13B7-4F6B-ADE3-91DAEECC1FF3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5DB6CEF0-13B7-4F6B-ADE3-91DAEECC1FF3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DB6CEF0-13B7-4F6B-ADE3-91DAEECC1FF3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DB6CEF0-13B7-4F6B-ADE3-91DAEECC1FF3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DB6CEF0-13B7-4F6B-ADE3-91DAEECC1FF3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C4F0CC14-3390-42A5-A00D-2CC5BD384D97}
+	EndGlobalSection
+EndGlobal
