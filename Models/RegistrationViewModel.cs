@@ -4,7 +4,6 @@ namespace ICT371525Y_School_Locker_App.Models
 {
     public class RegistrationViewModel
     {
-        // Registration Fields
         public string IDNumber { get; set; }
         public string Title { get; set; }
         public string Name { get; set; }
@@ -16,7 +15,6 @@ namespace ICT371525Y_School_Locker_App.Models
         public int? SelectedSchoolId { get; set; }
         public string Grade { get; set; }
 
-        // School dropdown
         public List<SchoolViewModel> Schools { get; set; } = new();
     }
 

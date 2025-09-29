@@ -30,28 +30,23 @@ public async Task<IActionResult> Login(LoginViewModel model)
 
     if (long.TryParse(model.IdNumber?.Trim(), out var idNumber))
     {
-        // ✅ Check if user is an Admin
         var admin = await _context.Admins
             .FirstOrDefaultAsync(a => a.AdminIdNumber.HasValue && a.AdminIdNumber.Value == idNumber);
 
                 if (admin != null)
                 {
-                    // Redirect to Admin page, pass adminId as query string
                     return Redirect($"/Admin/Index?adminId={admin.AdminId}");
                 }
 
-                // ✅ Check if user is a Parent
                 var parent = await _context.Parents
             .FirstOrDefaultAsync(p => p.ParentIdnumber == idNumber);
 
         if (parent != null)
         {
-            // Redirect to Locker page
             return Redirect($"/Locker/index?parentId={parent.ParentId}");
         }
     }
 
-    // If neither admin nor parent found
     ViewBag.ErrorMessage = "ID Number not found. Please register first.";
     return View("Index", model);
 }

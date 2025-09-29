@@ -23,14 +23,12 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View();
         }
 
-        // ✅ GET: api/Student
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
         {
             return await _context.Students.ToListAsync();
         }
 
-        // ✅ GET: api/Student/5
         [HttpGet("{id}")]
         public async Task<ActionResult<StudentDto>> GetStudent(int id)
         {
@@ -59,7 +57,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return student;
         }
 
-        // ✅ POST: api/Student
         [HttpPost]
         public async Task<ActionResult<Student>> PostStudent(Student student)
         {
@@ -69,7 +66,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return CreatedAtAction(nameof(GetStudent), new { id = student.StudentId }, student);
         }
 
-        // ✅ PUT: api/Student/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutStudent(int id, Student student)
         {
@@ -99,7 +95,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return NoContent();
         }
 
-        // ✅ DELETE: api/Student/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(int id)
         {

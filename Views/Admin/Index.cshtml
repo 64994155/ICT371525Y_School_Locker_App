@@ -4,7 +4,7 @@
     <h2>Welcome, @Model.AdminName</h2>
 
     <div class="row">
-        <!-- 🔒 Section 1: Assign Lockers by Search -->
+
         <div class="col-md-4">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
@@ -18,10 +18,9 @@
             </div>
         </div>
 
-        <!-- 📋 Section 2: Dynamic Parent Locker Management -->
         <div class="col-md-8">
             <div id="parentSection" style="@(Model.ShowParentSection ? "display:block;" : "display:none;")">
-                <!-- 🔎 Search Parent -->
+
                 <h2>Search Parent</h2>
                 <form asp-action="SearchParent" method="post" class="mb-4">
                     <input type="hidden" asp-for="SchoolId" />
@@ -32,7 +31,7 @@
                     <button type="submit" class="btn btn-primary">Search</button>
                 </form>
 
-                <!-- ➕ Add Student -->
+ 
                 @if (Model.ParentId != null)
                 {
                     <hr />
@@ -56,7 +55,7 @@
                     </form>
                 }
 
-                <!-- 📋 Allocated Students + Locker Info -->
+ 
                 @if (Model.AllocatedStudents != null && Model.AllocatedStudents.Any())
                 {
                     <hr />
@@ -86,13 +85,11 @@
             const baseUrl = window.location.origin;
             const loaders = {};
 
-            // 🔘 Toggle parent section
             document.getElementById("showParentSectionBtn").addEventListener("click", function () {
                 const parentSection = document.getElementById("parentSection");
                 parentSection.style.display = parentSection.style.display === "none" ? "block" : "none";
             });
 
-            // Only run locker logic if allocated students exist
             @if (Model.AllocatedStudents != null && Model.AllocatedStudents.Any())
             {
                     foreach (var student in Model.AllocatedStudents)
@@ -100,7 +97,7 @@
                             <text>
                             (function() {
                                 const studentId = @student.StudentId;
-                                const gradeId = @student.GradesId; // 👈 used to check if grade = 12
+                                const gradeId = @student.GradesId; 
                                 const container = document.getElementById(`locker-info-${studentId}`);
 
                                 async function loadLockers() {
@@ -214,7 +211,6 @@
                     }
             }
 
-            // --- Locker actions ---
             window.applyLocker = async (lockerId, studentId, yearType) => {
                 await fetch(`${baseUrl}/Locker/AdminAssignLocker`, {
                     method: "POST",

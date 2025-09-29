@@ -10,9 +10,8 @@ namespace ICT371525Y_School_Locker_App.Helper
     {
         public static async Task SendEmailAsync(string toEmail, string subject, string body)
         {
-            // Build config manually since this is a static class
             var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory()) // Important for non-web apps
+                .SetBasePath(Directory.GetCurrentDirectory()) 
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 

@@ -65,9 +65,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return item;
         }
 
-        //TODO ADD the IsUserOnWaitingList to the html after checing if a locker is assigned. add to html page the locker waitinglist details
-        //if found to be on the waiting list but also check if it is for the current year.
-
         [HttpPut("Assign")]
         public async Task<IActionResult> AssignWaitingList([FromBody] LockerWaitingListDto dto)
         {
@@ -91,7 +88,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             LockerWaitingList existingItem = new LockerWaitingList();
 
-            // Update values
             existingItem.SchoolId = dto.SchoolId;
             existingItem.GradeId = dto.GradeId;
             existingItem.AppliedDate = DateTime.Now;
@@ -115,7 +111,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto == null || dto.StudentId <= 0 || dto.SchoolId <= 0 || dto.GradeId <= 0)
                 return BadRequest("Invalid request parameters.");
 
-            // 5️⃣ Reset booking year flags
             if (dto.YearType?.ToLower() == "current")
             {
                 dto.CurrentYear = true;
@@ -142,7 +137,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             _context.LockerWaitingLists.Remove(existingItem);
             await _context.SaveChangesAsync();
 
-            // Send email to parent if needed
             var student = await _context.Students.Include(s => s.Parent)
                 .FirstOrDefaultAsync(s => s.StudentId == dto.StudentId);
             if (student?.Parent?.ParentEmail != null)
@@ -157,28 +151,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return Ok("Waiting list request canceled successfully.");
         }
 
-
-
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PutWaitingListItem(int id, LockerWaitingList item)
-        //{
-        //    if (id != item.WaitingListId) return BadRequest();
-
-        //    _context.Entry(item).State = EntityState.Modified;
-
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!WaitingListItemExists(id)) return NotFound();
-        //        else throw;
-        //    }
-
-        //    return NoContent();
-        //}
-
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteWaitingListItem(int id)
         {
@@ -191,17 +163,14 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return NoContent();
         }
 
-        //
         [HttpPost]
         public async Task<ActionResult<LockerWaitingListDto>> PostWaitingListItem(LockerWaitingListDto item)
         {
-            // Try to find an existing record for this student
             var existingItem = await _context.LockerWaitingLists
                 .FirstOrDefaultAsync(w => w.StudentId == item.StudentId);
 
             if (existingItem != null)
             {
-                // Update existing record
                 existingItem.SchoolId = item.SchoolId;
                 existingItem.GradeId = item.GradeId;
                 existingItem.AppliedDate = DateTime.Now;
@@ -213,7 +182,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 return Ok(existingItem);
             }
 
-            // Insert new record
             var newItem = new LockerWaitingList
             {
                 StudentId = item.StudentId,
@@ -225,7 +193,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             _context.LockerWaitingLists.Add(newItem);
             await _context.SaveChangesAsync();
 
-            // Assign the new generated ID to the DTO if needed
             item.WaitingListId = newItem.WaitingListId;
 
             return CreatedAtAction(nameof(GetWaitingListItem), new { id = newItem.WaitingListId }, item);

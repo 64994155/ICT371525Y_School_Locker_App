@@ -28,7 +28,6 @@
         <div class="alert alert-warning">No students found for this parent. Add one below:</div>
     }
 
-    <!-- Add Student Form -->
     <div class="card mt-4 shadow-sm">
         <div class="card-header bg-secondary text-white">
             Add Student
@@ -98,7 +97,6 @@
                         const nextYear = currentYear + 1;
                         let html = "";
 
-                        // --- Assigned lockers ---
                         if (assignedLockers && assignedLockers.length > 0) {
                             html += `<h6>Assigned Lockers</h6>`;
                             assignedLockers.forEach(l => {
@@ -118,10 +116,9 @@
                             html += `<p>No locker assigned yet.</p>`;
                         }
 
-                        // --- Check each year ---
                         async function checkYear(year, yearType) {
                             if (!assignedLockers.some(l => l.yearType === yearType)) {
-                                // Step 1: Check waiting list
+
                                 const waitlistApi = `${baseUrl}/api/LockerWaitingList/IsUserOnWaitingList/${studentId}/${yearType}`;
                                 const waitlistResponse = await fetch(waitlistApi);
                                 const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
@@ -140,12 +137,11 @@
                                         `).join("")}
                                     </div>`;
                                 } else {
-                                    // Step 2: Available lockers
+
                                     const lockerApi = `${baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
                                     const lockerResponse = await fetch(lockerApi);
                                     const result = lockerResponse.ok ? await lockerResponse.json() : [];
 
-                                    // 🔎 Handle cutoff response
                                     if (result.cutoffReached) {
                                         html += `<div class="alert alert-danger mt-3">${result.message}</div>`;
                                         return;
@@ -204,7 +200,6 @@
                 loadLockers();
             });
 
-            // --- Locker assignment ---
             window.applyLocker = async function (lockerId, studentId, yearType) {
                 try {
                     const response = await fetch(`${baseUrl}/Locker/AssignLocker`, {
@@ -220,7 +215,6 @@
                 }
             };
 
-            // --- Cancel locker ---
             window.cancelLocker = async function (lockerId, studentId, yearType) {
                 try {
                     const response = await fetch(`${baseUrl}/Locker/UnassignLocker`, {
@@ -236,7 +230,6 @@
                 }
             };
 
-            // --- Join waiting list ---
             window.joinWaitingList = async function (studentId, schoolId, gradeId, year, yearType) {
                 try {
                     const payload = {
@@ -261,7 +254,6 @@
                 }
             };
 
-            // --- Cancel waiting list ---
             window.cancelWaitingList = async function (studentId, schoolId, gradeId, YearType) {
                 if (!confirm("Are you sure you want to cancel this waiting list request?")) return;
                 try {
