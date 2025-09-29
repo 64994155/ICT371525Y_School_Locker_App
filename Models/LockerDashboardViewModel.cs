@@ -48,5 +48,6 @@
         public string LockerNumber { get; set; }
         public bool IsAssigned { get; set; }
         public bool IsAdminApproved { get; set; }
-    }
+        public DateTime? AssignedDate { get; set; }
+}
 }

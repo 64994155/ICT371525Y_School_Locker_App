@@ -143,7 +143,15 @@
                                     // Step 2: Available lockers
                                     const lockerApi = `${baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
                                     const lockerResponse = await fetch(lockerApi);
-                                    const lockers = lockerResponse.ok ? await lockerResponse.json() : [];
+                                    const result = lockerResponse.ok ? await lockerResponse.json() : [];
+
+                                    // 🔎 Handle cutoff response
+                                    if (result.cutoffReached) {
+                                        html += `<div class="alert alert-danger mt-3">${result.message}</div>`;
+                                        return;
+                                    }
+
+                                    const lockers = Array.isArray(result) ? result : [];
 
                                     if (!lockers || lockers.length === 0) {
                                         html += `<div class="alert alert-warning mt-3">
@@ -181,7 +189,7 @@
                         }
 
                         await checkYear(currentYear, "current");
-                        if(gradeId != 24){
+                        if (gradeId != 24) {
                             await checkYear(nextYear, "following");
                         }
 
@@ -258,9 +266,9 @@
                 if (!confirm("Are you sure you want to cancel this waiting list request?")) return;
                 try {
                     const response = await fetch(`${baseUrl}/api/LockerWaitingList/Unassign`, {
-                        method: "POST",  // <- use POST to send DTO body
+                        method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ studentId, schoolId, gradeId, YearType})
+                        body: JSON.stringify({ studentId, schoolId, gradeId, YearType })
                     });
                     if (!response.ok) throw new Error(await response.text() || "Failed to cancel waiting list.");
                     alert("Waiting list request successfully canceled.");

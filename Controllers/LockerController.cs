@@ -65,9 +65,69 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View(model);
         }
 
+        //[HttpGet("available")]
+        //public async Task<IActionResult> GetAvailableLockers(int schoolId, int gradeId, string yearType)
+        //{
+        //    bool selectCurrentYear = yearType.Equals("current", StringComparison.OrdinalIgnoreCase);
+
+        //    if (!selectCurrentYear)
+        //    {
+        //        gradeId = await (
+        //            from g in _context.Grades
+        //            join sg in _context.SchoolGrades on g.GradesId equals sg.GradeId
+        //            where sg.SchoolId == schoolId &&
+        //            g.GradeNumber > _context.Grades
+        //      .Where(g2 => g2.GradesId == gradeId)
+        //      .Select(g2 => g2.GradeNumber)
+        //      .FirstOrDefault()
+        //            orderby g.GradeNumber
+        //            select g.GradesId
+        //            ).FirstOrDefaultAsync();
+        //    }
+
+        //    var lockers = await _context.Lockers
+        //        .Include(l => l.School)
+        //        .Where(l => l.SchoolId == schoolId
+        //                    && l.GradeId == gradeId
+        //                    && l.IsAssigned == false
+        //                    && (selectCurrentYear ? l.CurrentBookingYear == false
+        //                                          : l.FollowingBookingYear == false))
+        //        .Select(l => new LockerDto
+        //        {
+        //            LockerId = l.LockerId,
+        //            LockerNumber = l.LockerNumber,
+        //            Location = l.School!.SchoolName
+        //        })
+        //        .ToListAsync();
+
+        //    return Ok(lockers);
+
+        //    //return Ok(new List<LockerDto>());
+
+        //}
+
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailableLockers(int schoolId, int gradeId, string yearType)
         {
+            //Normal behaviour
+            var today = DateTime.Now;
+
+            //Possible Exam Testing: Simulate Nov Cut Off 
+            //var today = new DateTime(2025, 12, 5);   // Simulate after cutoff
+            
+
+            var cutoffDate = new DateTime(today.Year, 11, 30, 23, 59, 59);
+
+            // If past November 30, cutoff applies to both current & following
+            if (today > cutoffDate)
+            {
+                return Ok(new
+                {
+                    cutoffReached = true,
+                    message = "Locker allocations are closed for this year (after November 30)."
+                });
+            }
+
             bool selectCurrentYear = yearType.Equals("current", StringComparison.OrdinalIgnoreCase);
 
             if (!selectCurrentYear)
@@ -76,13 +136,13 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     from g in _context.Grades
                     join sg in _context.SchoolGrades on g.GradesId equals sg.GradeId
                     where sg.SchoolId == schoolId &&
-                    g.GradeNumber > _context.Grades
-              .Where(g2 => g2.GradesId == gradeId)
-              .Select(g2 => g2.GradeNumber)
-              .FirstOrDefault()
+                          g.GradeNumber > _context.Grades
+                            .Where(g2 => g2.GradesId == gradeId)
+                            .Select(g2 => g2.GradeNumber)
+                            .FirstOrDefault()
                     orderby g.GradeNumber
                     select g.GradesId
-                    ).FirstOrDefaultAsync();
+                ).FirstOrDefaultAsync();
             }
 
             var lockers = await _context.Lockers
@@ -101,10 +161,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 .ToListAsync();
 
             return Ok(lockers);
-
-            //return Ok(new List<LockerDto>());
-
         }
+
 
         [HttpPost("unassignLocker")]
         public async Task<IActionResult> UnassignLocker([FromBody] LockerDto dto)

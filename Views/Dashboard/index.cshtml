@@ -1,4 +1,4 @@
-﻿@model ICT371525Y_School_Locker_App.Models.LockerDashboardViewModel
+﻿@* @model ICT371525Y_School_Locker_App.Models.LockerDashboardViewModel
 
 @{
     ViewBag.Title = "Locker Dashboard";
@@ -56,5 +56,124 @@
 
         <h4 class="mt-4 mb-2"><i class="bi bi-calendar3 text-info"></i> Bookings (Jan – Oct 2025)</h4>
         <p class="fw-bold">📦 Total Booked: @Model.LockersBookedJanToJun</p>
+    </div>
+</div>
+ *@
+
+@model ICT371525Y_School_Locker_App.Models.LockerDashboardViewModel
+
+@{
+    ViewBag.Title = "Locker Dashboard";
+}
+
+<div class="container mt-5" style="max-width: 1000px;">
+    <div class="border p-4 shadow-sm rounded bg-light">
+        <h2 class="text-center mb-4"><i class="bi bi-box-seam"></i> Locker System Dashboard</h2>
+
+        <!-- 🔎 Filter Form -->
+        <form method="get" asp-action="Index" class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label">Start Date</label>
+                <input type="date" name="startDate" value="@Context.Request.Query["startDate"]" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">End Date</label>
+                <input type="date" name="endDate" value="@Context.Request.Query["endDate"]" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Grade</label>
+                <input type="number" name="gradeId" value="@Context.Request.Query["gradeId"]" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Admin Approved</label>
+                <select name="isAdminApproved" class="form-select">
+                    <option value="">All</option>
+                    <option value="true" selected="@(Context.Request.Query["isAdminApproved"] == "true")">Yes</option>
+                    <option value="false" selected="@(Context.Request.Query["isAdminApproved"] == "false")">No</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+
+        <!-- 📊 Usage by Grade -->
+        <h4 class="mb-3"><i class="bi bi-bar-chart-line-fill text-primary"></i> Usage by Grade</h4>
+        <table class="table table-bordered table-striped">
+            <thead class="table-primary">
+                <tr>
+                    <th>Grade</th>
+                    <th>Lockers Assigned</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.LockerByGrade != null && Model.LockerByGrade.Any())
+                {
+                    foreach (var item in Model.LockerByGrade)
+                    {
+                        <tr>
+                            <td>@item.Grade</td>
+                            <td>@item.Count</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">No data found for selected filters.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- 📋 Locker Usage Details -->
+        <h4 class="mt-4 mb-3"><i class="bi bi-graph-up-arrow text-success"></i> Locker Usage Details</h4>
+        <table class="table table-bordered table-striped">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Parent Email</th>
+                    <th>Student School Num</th>
+                    <th>Grade</th>
+                    <th>Locker</th>
+                    <th>Assigned Date</th>
+                    <th>Admin Approved</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.LockerUsageGrade8and11 != null && Model.LockerUsageGrade8and11.Any())
+                {
+                    foreach (var item in Model.LockerUsageGrade8and11)
+                    {
+                        <tr>
+                            <td>@item.ParentEmail</td>
+                            <td>@item.StudentSchoolNumber</td>
+                            <td>@item.GradeNumber</td>
+                            <td>@item.LockerNumber</td>
+                            <td>@item.AssignedDate?.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @if (item.IsAdminApproved)
+                                {
+                                    <span class="badge bg-success">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">No</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No results for selected filters.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- 📦 Summary -->
+        <h4 class="mt-4 mb-2"><i class="bi bi-calendar3 text-info"></i> Summary</h4>
+        <p class="fw-bold">📦 Total Assigned Lockers: @Model.LockersBookedJanToJun</p>
     </div>
 </div>
