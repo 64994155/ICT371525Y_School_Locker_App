@@ -26,7 +26,7 @@ namespace ICT371525Y_School_Locker_App.DTO
 
         public int Year { get; set; }
 
-        public string YearType { get; set; }
+        public string? YearType { get; set; }
 
 
     }

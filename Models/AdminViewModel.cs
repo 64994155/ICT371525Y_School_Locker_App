@@ -29,5 +29,7 @@ namespace ICT371525Y_School_Locker_App.DTO
         public int? SelectedGradeId { get; set; }
         // List of allocated students
         public List<StudentDto> AllocatedStudents { get; set; } = new List<StudentDto>();
+
+        public bool ShowParentSection { get; set; } = false;
     }
 }

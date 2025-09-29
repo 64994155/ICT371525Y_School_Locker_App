@@ -1,5 +1,6 @@
 ﻿using ICT371525Y_School_Locker_App.Data;
 using ICT371525Y_School_Locker_App.DTO;
+using ICT371525Y_School_Locker_App.Helper;
 using ICT371525Y_School_Locker_App.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -43,7 +44,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 SchoolId = admin.SchoolId,
                 AdminName = admin.AdminName,
                 AdminIdNumber = admin.AdminIdNumber,
-                Grades = grades
+                Grades = grades,
+                ShowParentSection = false // default hidden
             };
 
             return View(model);
@@ -94,7 +96,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ParentId = parent.ParentId,
                 ParentIdNumber = parent.ParentIdnumber.ToString(),
                 ParentName = parent.ParentName,
-                AllocatedStudents = allocatedStudents
+                AllocatedStudents = allocatedStudents,
+                ShowParentSection = true 
             };
 
             // Load grades for dropdown
@@ -135,6 +138,38 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return await SearchParent(model); // refresh view
         }
 
+        [HttpPost("ApproveLocker")]
+        public async Task<IActionResult> ApproveLocker([FromBody] LockerDto dto)
+        {
+            if (dto.LockerId <= 0)
+                return BadRequest("Invalid locker ID.");
+
+            var locker = await _context.Lockers.FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
+
+            if (locker == null)
+                return NotFound("Locker not found.");
+
+            locker.IsAdminApproved = true; // Mark as approved
+            await _context.SaveChangesAsync();
+
+            // Optionally email parent
+            var student = await _context.Students
+                .Include(s => s.Parent)
+                .FirstOrDefaultAsync(s => s.StudentId == locker.StudentId);
+
+            if (student?.Parent?.ParentEmail != null)
+            {
+                await EmailHelper.SendEmailAsync(
+                    student.Parent.ParentEmail,
+                    "Locker Approval Confirmation",
+                    $"Dear Parent,\n\nLocker {locker.LockerNumber} for {student.StudentName} has been approved by the school admin."
+                );
+            }
+
+            return Ok("Locker approved successfully.");
+        }
+
+
         // POST: Admin/RemoveStudent
         [HttpPost("RemoveStudent")]
         public async Task<IActionResult> RemoveStudent(int studentId, string parentIdNumber, int schoolId)
@@ -149,7 +184,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
             var model = new AdminViewModel
             {
                 ParentIdNumber = parentIdNumber,
-                SchoolId = schoolId
+                SchoolId = schoolId,
+                ShowParentSection = true
             };
 
             return await SearchParent(model); // refresh parent + student list
