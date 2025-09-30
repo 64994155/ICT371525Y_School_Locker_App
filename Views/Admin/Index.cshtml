@@ -291,6 +291,7 @@
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
             if (loaders[studentId]) loaders[studentId]();
+            refreshSearch();  // 🔄 refresh after action
         };
 
         window.cancelLocker = async (lockerId, studentId, yearType) => {
@@ -300,6 +301,7 @@
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
             if (loaders[studentId]) loaders[studentId]();
+            refreshSearch();  // 🔄 refresh after action
         };
 
         window.approveLocker = async (lockerId, studentId) => {
@@ -310,6 +312,7 @@
             });
             if (!response.ok) alert("Error approving locker");
             if (loaders[studentId]) loaders[studentId]();
+            refreshSearch();  // 🔄 refresh after action
         };
 
         // ✅ Join Waiting List function (was missing)
@@ -334,6 +337,7 @@
                 return;
             }
             if (loaders[studentId]) loaders[studentId]();
+            refreshSearch();  // 🔄 refresh after action
         };
 
         // ✅ Cancel Waiting List
@@ -350,6 +354,19 @@
                 })
             });
             if (loaders[studentId]) loaders[studentId]();
-        };    
+            refreshSearch();  // 🔄 refresh after action
+        };
+
+                // Helper: re-submit whichever search form is visible
+        function refreshSearch() {
+            const gradeForm = document.querySelector("#gradeSection form");
+            const parentForm = document.querySelector("#parentSection form");
+
+            if (gradeForm && document.getElementById("gradeSection").style.display !== "none") {
+                gradeForm.submit();
+            } else if (parentForm && document.getElementById("parentSection").style.display !== "none") {
+                parentForm.submit();
+            }
+        }
     </script>
 }
