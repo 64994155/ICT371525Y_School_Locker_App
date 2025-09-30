@@ -9,6 +9,7 @@
         public int? GradesId { get; set; }
         public int? SchoolId { get; set; }
         public string? GradeName { get; set; }
-
+        public bool HasLockerAssigned { get; set; } // ✅ used for filtering in UI
+        public bool IsOnWaitingList { get; set; }
     }
 }

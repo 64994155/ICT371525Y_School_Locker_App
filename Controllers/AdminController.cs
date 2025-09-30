@@ -212,28 +212,51 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 return View("Index", model);
             }
 
-            var students = await _context.Students
+            var studentsQuery = _context.Students
                 .Where(s => s.SchoolId == model.SchoolId && s.GradesId == model.SelectedGradeId.Value)
                 .Select(s => new StudentDto
                 {
-                    StudentSchoolNumber = s.StudentSchoolNumber,
-                    StudentName = s.StudentName,
                     StudentId = s.StudentId,
+                    StudentName = s.StudentName,
+                    StudentSchoolNumber = s.StudentSchoolNumber,
                     GradesId = s.GradesId,
-                    SchoolId = s.SchoolId
-                })
-                .ToListAsync();
+                    SchoolId = s.SchoolId,
+                    HasLockerAssigned = _context.Lockers.Any(l => l.StudentId == s.StudentId),
+                    IsOnWaitingList = _context.LockerWaitingLists.Any(wl => wl.StudentId == s.StudentId)
+                });
+
+            var students = await studentsQuery.ToListAsync();
+
+            // Apply filter
+            switch (model.GradeFilter)
+            {
+                case "Assigned":
+                    students = students.Where(s => s.HasLockerAssigned).ToList();
+                    break;
+                case "Unassigned":
+                    students = students.Where(s => !s.HasLockerAssigned && !s.IsOnWaitingList).ToList();
+                    break;
+                case "Waiting":
+                    students = students.Where(s => s.IsOnWaitingList).ToList();
+                    break;
+                default: // "All"
+                    students = students
+                        .OrderByDescending(s => s.IsOnWaitingList)
+                        .ThenByDescending(s => s.HasLockerAssigned)
+                        .ToList();
+                    break;
+            }
 
             var vm = new AdminViewModel
             {
                 AdminName = model.AdminName,
                 SchoolId = model.SchoolId,
                 SelectedGradeId = model.SelectedGradeId,
+                GradeFilter = model.GradeFilter,
                 GradeStudents = students,
                 ShowGradeSection = true
             };
 
-            // ✅ Repopulate Grades
             vm.Grades = await (from sg in _context.SchoolGrades
                                join g in _context.Grades on sg.GradeId equals g.GradesId
                                where sg.SchoolId == vm.SchoolId
@@ -246,7 +269,5 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             return View("Index", vm);
         }
-
-
     }
 }

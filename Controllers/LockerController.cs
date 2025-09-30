@@ -72,7 +72,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             //Possible Exam Testing: Simulate Nov Cut Off 
             //var today = new DateTime(2025, 12, 5);   // Simulate after cutoff
             
-
             var cutoffDate = new DateTime(today.Year, 11, 30, 23, 59, 59);
 
             if (today > cutoffDate)
