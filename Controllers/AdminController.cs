@@ -41,10 +41,29 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 SchoolId = admin.SchoolId,
                 AdminName = admin.AdminName,
-                AdminIdNumber = admin.AdminIdNumber,
-                Grades = grades,
-                ShowParentSection = false 
+                AdminIdNumber = admin.AdminIdNumber.ToString(),
+                ShowParentSection = false
             };
+
+            model.Grades = await (from sg in _context.SchoolGrades
+                                  join g in _context.Grades on sg.GradeId equals g.GradesId
+                                  where sg.SchoolId == model.SchoolId
+                                  orderby g.GradeNumber
+                                  select new SelectListItem
+                                  {
+                                      Value = g.GradesId.ToString(),
+                                      Text = g.GradeName
+                                  }).ToListAsync();
+
+            ViewBag.Grades = await (from sg in _context.SchoolGrades
+                                    join g in _context.Grades on sg.GradeId equals g.GradesId
+                                    where sg.SchoolId == model.SchoolId
+                                    orderby g.GradeNumber
+                                    select new SelectListItem
+                                    {
+                                        Value = g.GradesId.ToString(),
+                                        Text = g.GradeName
+                                    }).ToListAsync();
 
             return View(model);
         }
@@ -93,7 +112,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ParentIdNumber = parent.ParentIdnumber.ToString(),
                 ParentName = parent.ParentName,
                 AllocatedStudents = allocatedStudents,
-                ShowParentSection = true 
+                ShowParentSection = true
             };
 
             ViewBag.Grades = await (from sg in _context.SchoolGrades
@@ -143,7 +162,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (locker == null)
                 return NotFound("Locker not found.");
 
-            locker.IsAdminApproved = true; 
+            locker.IsAdminApproved = true;
             await _context.SaveChangesAsync();
 
             var student = await _context.Students
@@ -179,7 +198,50 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ShowParentSection = true
             };
 
-            return await SearchParent(model); 
+            return await SearchParent(model);
         }
+
+        [HttpPost("SearchGrade")]
+        public async Task<IActionResult> SearchGrade(AdminViewModel model)
+        {
+            if (!model.SelectedGradeId.HasValue)
+            {
+                ModelState.AddModelError("", "Grade selection is required.");
+                return View("Index", model);
+            }
+
+            var students = await _context.Students
+                .Where(s => s.SchoolId == model.SchoolId && s.GradesId == model.SelectedGradeId.Value)
+                .Select(s => new StudentDto
+                {
+                    StudentSchoolNumber = s.StudentSchoolNumber,
+                    StudentName = s.StudentName,
+                    StudentId = s.StudentId,
+                    GradesId = s.GradesId,
+                    SchoolId = s.SchoolId
+                })
+                .ToListAsync();
+
+            var vm = new AdminViewModel
+            {
+                AdminName = model.AdminName,
+                SchoolId = model.SchoolId,
+                SelectedGradeId = model.SelectedGradeId,
+                GradeStudents = students,
+                ShowGradeSection = true
+            };
+
+            ViewBag.Grades = await (from sg in _context.SchoolGrades
+                                    join g in _context.Grades on sg.GradeId equals g.GradesId
+                                    where sg.SchoolId == model.SchoolId
+                                    select new SelectListItem
+                                    {
+                                        Value = g.GradesId.ToString(),
+                                        Text = g.GradeName
+                                    }).ToListAsync();
+
+            return View("Index", vm);
+        }
+
     }
 }
