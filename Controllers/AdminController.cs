@@ -115,14 +115,16 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ShowParentSection = true
             };
 
-            ViewBag.Grades = await (from sg in _context.SchoolGrades
-                                    join g in _context.Grades on sg.GradeId equals g.GradesId
-                                    where sg.SchoolId == model.SchoolId
-                                    select new SelectListItem
-                                    {
-                                        Value = g.GradesId.ToString(),
-                                        Text = g.GradeName
-                                    }).ToListAsync();
+            // ✅ Always repopulate Grades here
+            vm.Grades = await (from sg in _context.SchoolGrades
+                               join g in _context.Grades on sg.GradeId equals g.GradesId
+                               where sg.SchoolId == vm.SchoolId
+                               orderby g.GradeNumber
+                               select new SelectListItem
+                               {
+                                   Value = g.GradesId.ToString(),
+                                   Text = g.GradeName
+                               }).ToListAsync();
 
             return View("Index", vm);
         }
@@ -231,17 +233,20 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ShowGradeSection = true
             };
 
-            ViewBag.Grades = await (from sg in _context.SchoolGrades
-                                    join g in _context.Grades on sg.GradeId equals g.GradesId
-                                    where sg.SchoolId == model.SchoolId
-                                    select new SelectListItem
-                                    {
-                                        Value = g.GradesId.ToString(),
-                                        Text = g.GradeName
-                                    }).ToListAsync();
+            // ✅ Repopulate Grades
+            vm.Grades = await (from sg in _context.SchoolGrades
+                               join g in _context.Grades on sg.GradeId equals g.GradesId
+                               where sg.SchoolId == vm.SchoolId
+                               orderby g.GradeNumber
+                               select new SelectListItem
+                               {
+                                   Value = g.GradesId.ToString(),
+                                   Text = g.GradeName
+                               }).ToListAsync();
 
             return View("Index", vm);
         }
+
 
     }
 }

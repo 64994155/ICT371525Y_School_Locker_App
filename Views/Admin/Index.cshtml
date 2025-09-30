@@ -218,8 +218,15 @@
                                                     const lockersRes = await fetch(`${baseUrl}/Locker/available?schoolId=${wl.schoolId}&gradeId=${wl.gradeId}&yearType=${yearType}`);
                                                     const lockers = lockersRes.ok ? await lockersRes.json() : [];
                                                     if (lockers.length) {
-                                                        html += `<button class="btn btn-sm btn-success ms-2"
-                                                            onclick="applyLocker(${lockers[0].lockerId}, ${student.StudentId}, '${yearType}')">Assign Locker</button>`;
+                                                        // Find the first waiting list entry (earliest AppliedDate)
+                                                        const nextInLine = waitlist.sort((a, b) => new Date(a.appliedDate) - new Date(b.appliedDate))[0];
+
+                                                        if (nextInLine && nextInLine.studentId === student.StudentId) {
+                                                            html += `<button class="btn btn-sm btn-success ms-2"
+                                                                onclick="applyLocker(${lockers[0].lockerId}, ${student.StudentId}, '${yearType}')">
+                                                                Assign Locker (Next in Line)
+                                                            </button>`;
+                                                        }
                                                     }
                                                 }
                                                 html += `</div>`;
