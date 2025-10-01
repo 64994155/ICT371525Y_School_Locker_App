@@ -202,7 +202,7 @@
 
             window.applyLocker = async function (lockerId, studentId, yearType) {
                 try {
-                    const response = await fetch(`${baseUrl}/Locker/AssignLocker`, {
+                    const response = await fetch(`${baseUrl}/Locker/assignLocker`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lockerId, studentId, yearType })

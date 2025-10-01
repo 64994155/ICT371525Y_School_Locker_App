@@ -62,7 +62,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             return View(model);
         }
-      
+
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailableLockers(int schoolId, int gradeId, string yearType)
         {
@@ -71,7 +71,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             //Possible Exam Testing: Simulate Nov Cut Off 
             //var today = new DateTime(2025, 12, 5);   // Simulate after cutoff
-            
+
             var cutoffDate = new DateTime(today.Year, 11, 30, 23, 59, 59);
 
             if (today > cutoffDate)
@@ -107,6 +107,44 @@ namespace ICT371525Y_School_Locker_App.Controllers
                             && l.IsAssigned == false
                             && (selectCurrentYear ? l.CurrentBookingYear == false
                                                   : l.FollowingBookingYear == false))
+                .Select(l => new LockerDto
+                {
+                    LockerId = l.LockerId,
+                    LockerNumber = l.LockerNumber,
+                    Location = l.School!.SchoolName
+                })
+                .ToListAsync();
+
+            return Ok(lockers);
+
+        }
+
+        [HttpGet("adminAvailable")]
+        public async Task<IActionResult> GetAdminAvailableLockers(int schoolId, int gradeId, string yearType)
+        {
+            //Normal behaviour
+            var today = DateTime.Now;
+
+            //Possible Exam Testing: Simulate Nov Cut Off 
+            //var today = new DateTime(2025, 12, 5);   // Simulate after cutoff
+
+            var cutoffDate = new DateTime(today.Year, 11, 30, 23, 59, 59);
+
+            if (today > cutoffDate)
+            {
+                return Ok(new
+                {
+                    cutoffReached = true,
+                    message = "Locker allocations are closed for this year (after November 30)."
+                });
+            }
+   
+            var lockers = await _context.Lockers
+                .Include(l => l.School)
+                .Where(l => l.SchoolId == schoolId
+                            && l.GradeId == gradeId
+                            && l.IsAssigned == false
+                                                  )
                 .Select(l => new LockerDto
                 {
                     LockerId = l.LockerId,
@@ -222,7 +260,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             }
         }
 
-        [HttpPost("adminAssignLocker")]
+        [HttpPost("AdminAssignLocker")]
         public async Task<IActionResult> AdminAssignLocker([FromBody] LockerDto dto)
         {
             if (dto.LockerId <= 0 || dto.StudentID <= 0)

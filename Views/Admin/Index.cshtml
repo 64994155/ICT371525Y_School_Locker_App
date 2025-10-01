@@ -95,7 +95,7 @@
         <div class="col-md-12">
             <div id="gradeSection" style="@(Model.ShowGradeSection ? "display:block;" : "display:none;")">
                 <h2>Search by Grade</h2>
-                <form asp-action="SearchGrade" method="post" class="mb-4">
+                <form id="gradeSearchForm" asp-action="SearchGrade" method="post" class="mb-4">
                     <input type="hidden" asp-for="SchoolId" />
                     <div class="form-group mb-2">
                         <label>Select Grade</label>
@@ -218,7 +218,7 @@
                     
                                   // show assign button only for first (next in line) if lockers exist
                                   if (!firstShown) {
-                                      const lockersRes = await fetch(`${window.baseUrl}/Locker/available?schoolId=${wl.schoolId}&gradeId=${wl.gradeId}&yearType=${yearType}`);
+                                      const lockersRes = await fetch(`${window.baseUrl}/Locker/adminAvailable?schoolId=${wl.schoolId}&gradeId=${wl.gradeId}&yearType=${yearType}`);
                                       const lockers = lockersRes.ok ? await lockersRes.json() : [];
                                       if (Array.isArray(lockers) && lockers.length > 0) {
                                           html += `<button class="btn btn-sm btn-success ms-2"
@@ -247,7 +247,7 @@
                         const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
 
                         if (Array.isArray(waitlistItems) && waitlistItems.length > 0) {
-                            if (filter === "Unassigned") {
+                        if (filter === "Unassigned") {
                                 // Only block in Unassigned filter
                                 html += `<div class="alert alert-info mt-3">
                                             Already on Waiting List for ${year}.
@@ -306,16 +306,16 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
-            if (loaders[studentId]) loaders[studentId]();
+               refreshGradeSearch();
         };
 
         window.cancelLocker = async (lockerId, studentId, yearType) => {
-            await fetch(`${window.baseUrl}/Locker/UnassignLocker`, {
+            await fetch(`${window.baseUrl}/Locker/unassignLocker`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
-            if (loaders[studentId]) loaders[studentId]();
+              refreshGradeSearch();
         };
 
         window.approveLocker = async (lockerId, studentId) => {
@@ -324,7 +324,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId })
             });
-            if (loaders[studentId]) loaders[studentId]();
+               refreshGradeSearch();
         };
 
         window.joinWaitingList = async (studentId, schoolId, gradeId, year, yearType) => {
@@ -342,7 +342,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-            if (loaders[studentId]) loaders[studentId]();
+               refreshGradeSearch();
         };
 
         window.cancelWaitingList = async (studentId, schoolId, gradeId, yearType) => {
@@ -357,7 +357,12 @@
                     followingYear: (yearType === "following")
                 })
             });
-            if (loaders[studentId]) loaders[studentId]();
+               refreshGradeSearch();
         };
+
+        function refreshGradeSearch() {
+            const gradeForm = document.getElementById("gradeSearchForm");
+            if (gradeForm) gradeForm.submit();
+        }
     </script>
 }
