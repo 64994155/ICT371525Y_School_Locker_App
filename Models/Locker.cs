@@ -30,4 +30,5 @@ public partial class Locker
     public virtual School? School { get; set; }
 
     public virtual Student? Student { get; set; }
+
 }

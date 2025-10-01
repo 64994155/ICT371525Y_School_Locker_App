@@ -31,12 +31,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (admin == null)
                 return BadRequest("Admin not found.");
 
-            var grades = await (from g in _context.Grades
-                                join sg in _context.SchoolGrades on g.GradesId equals sg.GradeId
-                                where sg.SchoolId == admin.SchoolId
-                                orderby g.GradeNumber
-                                select g).ToListAsync();
-
             var model = new AdminViewModel
             {
                 SchoolId = admin.SchoolId,
@@ -55,15 +49,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                                       Text = g.GradeName
                                   }).ToListAsync();
 
-            ViewBag.Grades = await (from sg in _context.SchoolGrades
-                                    join g in _context.Grades on sg.GradeId equals g.GradesId
-                                    where sg.SchoolId == model.SchoolId
-                                    orderby g.GradeNumber
-                                    select new SelectListItem
-                                    {
-                                        Value = g.GradesId.ToString(),
-                                        Text = g.GradeName
-                                    }).ToListAsync();
+            ViewBag.Grades = model.Grades;
 
             return View(model);
         }
@@ -115,7 +101,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 ShowParentSection = true
             };
 
-            // ✅ Always repopulate Grades here
             vm.Grades = await (from sg in _context.SchoolGrades
                                join g in _context.Grades on sg.GradeId equals g.GradesId
                                where sg.SchoolId == vm.SchoolId
@@ -212,7 +197,27 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 return View("Index", model);
             }
 
-            var studentsQuery = _context.Students
+            // --- Precompute sets for flags ---
+            var currentYearLockers = await _context.Lockers
+                .Where(l => (l.CurrentBookingYear ?? false) == true)
+                .Select(l => l.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            var followingYearLockers = await _context.Lockers
+                .Where(l => (l.FollowingBookingYear ?? false) == true)
+                .Select(l => l.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            var waitingList = await _context.LockerWaitingLists
+                .Where(wl => wl.Status == true)
+                .Select(wl => wl.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            // --- Query students in this school/grade ---
+            var students = await _context.Students
                 .Where(s => s.SchoolId == model.SchoolId && s.GradesId == model.SelectedGradeId.Value)
                 .Select(s => new StudentDto
                 {
@@ -221,20 +226,24 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     StudentSchoolNumber = s.StudentSchoolNumber,
                     GradesId = s.GradesId,
                     SchoolId = s.SchoolId,
-                    HasLockerAssigned = _context.Lockers.Any(l => l.StudentId == s.StudentId),
-                    IsOnWaitingList = _context.LockerWaitingLists.Any(wl => wl.StudentId == s.StudentId)
-                });
 
-            var students = await studentsQuery.ToListAsync();
+                    // Use precomputed lists for fast lookups
+                    HasCurrentYearLocker = currentYearLockers.Contains(s.StudentId),
+                    HasFollowingYearLocker = followingYearLockers.Contains(s.StudentId),
+                    IsOnWaitingList = waitingList.Contains(s.StudentId)
+                })
+                .ToListAsync();
 
-            // Apply filter
+            // --- Apply filter logic ---
             switch (model.GradeFilter)
             {
                 case "Assigned":
-                    students = students.Where(s => s.HasLockerAssigned).ToList();
+                    students = students.Where(s => s.HasCurrentYearLocker || s.HasFollowingYearLocker).ToList();
                     break;
                 case "Unassigned":
-                    students = students.Where(s => !s.HasLockerAssigned && !s.IsOnWaitingList).ToList();
+                    students = students.Where(s => (!s.HasCurrentYearLocker || !s.HasFollowingYearLocker) &&
+                        !s.IsOnWaitingList
+                    ).ToList();
                     break;
                 case "Waiting":
                     students = students.Where(s => s.IsOnWaitingList).ToList();
@@ -242,7 +251,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 default: // "All"
                     students = students
                         .OrderByDescending(s => s.IsOnWaitingList)
-                        .ThenByDescending(s => s.HasLockerAssigned)
+                        .ThenByDescending(s => s.HasCurrentYearLocker || s.HasFollowingYearLocker)
                         .ToList();
                     break;
             }
@@ -269,5 +278,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             return View("Index", vm);
         }
+
     }
 }
+
