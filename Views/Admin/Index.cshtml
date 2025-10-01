@@ -92,13 +92,8 @@
                     {
                         <div class="card mb-3 shadow-sm">
                             <div class="card-header bg-primary text-white">
-                                @student.StudentName (@student.StudentSchoolNumber)
-                            </div>
-                            <div class="card-body">
-                                <div id="locker-info-@student.StudentId">
-                                    <p>Loading locker info...</p>
-                                </div>
-                            </div>
+                                @student.StudentName - Student Number : @student.StudentSchoolNumber
+                            </div>                            
                         </div>
                     }
                 }
@@ -204,11 +199,9 @@
 
             const filter = "@Model.GradeFilter";
 
-            @if ((Model.AllocatedStudents?.Any() ?? false) || (Model.GradeStudents?.Any() ?? false))
+                    @if (Model.GradeStudents?.Any() ?? false)
             {
-                    var students = (Model.AllocatedStudents ?? Enumerable.Empty<ICT371525Y_School_Locker_App.DTO.StudentDto>())
-                                                  .Concat(Model.GradeStudents ?? Enumerable.Empty<ICT371525Y_School_Locker_App.DTO.StudentDto>());
-                    foreach (var student in students)
+                    foreach (var student in Model.GradeStudents)
                     {
                             <text>
                                 loadLockersForStudent(@student.StudentId, @student.SchoolId, @student.GradesId, filter);
