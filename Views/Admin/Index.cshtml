@@ -154,7 +154,7 @@
 <div class="col-md-12">
     <div id="studentSection" style="@(Model.ShowStudentSection ? "display:block;" : "display:none;")">
         <h2>Search Student by Number</h2>
-        <form asp-action="SearchStudentNumber" method="post" class="mb-4">
+        <form id="studentSearchForm" asp-action="SearchStudentNumber" method="post" class="mb-4">
             <input type="hidden" asp-for="SchoolId" />
             <div class="form-group mb-2">
                 <label>Student School Number</label>
@@ -363,16 +363,16 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
-               refreshGradeSearch();
+                refreshSearch(studentId);
         };
 
         window.cancelLocker = async (lockerId, studentId, yearType) => {
-            await fetch(`${window.baseUrl}/Locker/unassignLocker`, {
+            await fetch(`${window.baseUrl}/Locker/UnassignLocker`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId, studentID: studentId, yearType })
             });
-              refreshGradeSearch();
+               refreshSearch(studentId);
         };
 
         window.approveLocker = async (lockerId, studentId) => {
@@ -381,7 +381,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ lockerId })
             });
-               refreshGradeSearch();
+                refreshSearch(studentId);
         };
 
         window.joinWaitingList = async (studentId, schoolId, gradeId, year, yearType) => {
@@ -399,7 +399,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-               refreshGradeSearch();
+                refreshSearch(studentId);
         };
 
         window.cancelWaitingList = async (studentId, schoolId, gradeId, yearType) => {
@@ -414,12 +414,22 @@
                     followingYear: (yearType === "following")
                 })
             });
-               refreshGradeSearch();
+                refreshSearch(studentId);
         };
 
-        function refreshGradeSearch() {
+        function refreshSearch(studentId) {
+            const studentForm = document.getElementById("studentSearchForm");
             const gradeForm = document.getElementById("gradeSearchForm");
-            if (gradeForm) gradeForm.submit();
+
+            // If student section is visible → refresh student search
+            if (studentForm && document.getElementById("studentSection").style.display !== "none") {
+                studentForm.submit();
+            }
+            // Else fallback to grade search
+            else if (gradeForm && document.getElementById("gradeSection").style.display !== "none") {
+                gradeForm.submit();
+            }
         }
+
     </script>
 }

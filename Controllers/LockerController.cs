@@ -158,7 +158,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
         }
 
 
-        [HttpPost("unassignLocker")]
+        [HttpPost("UnassignLocker")]
         public async Task<IActionResult> UnassignLocker([FromBody] LockerDto dto)
         {
             if (dto.LockerId <= 0 || dto.StudentID <= 0)
