@@ -241,8 +241,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     students = students.Where(s => s.HasCurrentYearLocker || s.HasFollowingYearLocker).ToList();
                     break;
                 case "Unassigned":
-                    students = students.Where(s => (!s.HasCurrentYearLocker || !s.HasFollowingYearLocker) &&
-                        !s.IsOnWaitingList
+                    students = students.Where(s =>
+                        !s.HasCurrentYearLocker || !s.HasFollowingYearLocker
                     ).ToList();
                     break;
                 case "Waiting":

@@ -204,16 +204,32 @@
                         const waitlistResponse = await fetch(waitlistApi);
                         const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
 
-                        if (Array.isArray(waitlistItems) && waitlistItems.length > 0) {
-                            html += `<div class="alert alert-info mt-3"><h6>Waiting List (${year})</h6>`;
-                            waitlistItems.forEach(wl => {
-                                html += `<p><strong>School:</strong> ${wl.schoolName}</p>
-                                         <p><strong>Grade:</strong> ${wl.gradeName}</p>
-                                         <p><strong>Applied:</strong> ${new Date(wl.appliedDate).toLocaleDateString()}</p>
-                                         <button class="btn btn-sm btn-danger"
-                                             onclick="cancelWaitingList(${studentId}, ${wl.schoolId}, ${wl.gradeId}, '${yearType}')">Cancel</button>`;
-                            });
+                        if (Array.isArray(waitlistItems) && waitlistItems.length > 0) {                         
                             html += `</div>`;
+                                     waitlistItems.sort((a, b) => new Date(a.appliedDate) - new Date(b.appliedDate));
+                              html += `<div class="alert alert-info mt-3"><h6>Waiting List (${year})</h6>`;
+                              let firstShown = false;
+                              for (const wl of waitlistItems) {
+                                  html += `<p><strong>School:</strong> ${wl.schoolName}</p>
+                                           <p><strong>Grade:</strong> ${wl.gradeName}</p>
+                                           <p><strong>Applied:</strong> ${new Date(wl.appliedDate).toLocaleDateString()}</p>
+                                           <button class="btn btn-sm btn-danger"
+                                               onclick="cancelWaitingList(${studentId}, ${wl.schoolId}, ${wl.gradeId}, '${yearType}')">Cancel</button>`;
+                    
+                                  // show assign button only for first (next in line) if lockers exist
+                                  if (!firstShown) {
+                                      const lockersRes = await fetch(`${window.baseUrl}/Locker/available?schoolId=${wl.schoolId}&gradeId=${wl.gradeId}&yearType=${yearType}`);
+                                      const lockers = lockersRes.ok ? await lockersRes.json() : [];
+                                      if (Array.isArray(lockers) && lockers.length > 0) {
+                                          html += `<button class="btn btn-sm btn-success ms-2"
+                                                      onclick="applyLocker(${lockers[0].lockerId}, ${studentId}, '${yearType}')">
+                                                      Assign Next Locker</button>`;
+                                      }
+                                      firstShown = true;
+                                  }
+                                  html += `<hr/>`;
+                              }
+                              html += `</div>`;
                         }
                     }
                     await checkWaiting("current", currentYear);
@@ -224,6 +240,19 @@
                 if (filter === "Unassigned" || filter === "All") {
                     async function checkYear(year, yearType) {
                         if (assignedLockers.some(l => l.yearType === yearType)) return;
+
+                              // ✅ Check waiting list first
+                        const waitlistApi = `${window.baseUrl}/api/LockerWaitingList/IsUserOnWaitingList/${studentId}/${yearType}`;
+                        const waitlistResponse = await fetch(waitlistApi);
+                        const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
+
+                        if (Array.isArray(waitlistItems) && waitlistItems.length > 0) {
+                            // Student already on waiting list for this year -> don't show lockers
+                            html += `<div class="alert alert-info mt-3">
+                                        Already on Waiting List for ${year}.
+                                     </div>`;
+                            return; // 🚫 stop here
+                        }
 
                         const lockerApi = `${window.baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
                         const lockerResponse = await fetch(lockerApi);
