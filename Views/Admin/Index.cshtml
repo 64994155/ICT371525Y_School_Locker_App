@@ -247,11 +247,15 @@
                         const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
 
                         if (Array.isArray(waitlistItems) && waitlistItems.length > 0) {
-                            // Student already on waiting list for this year -> don't show lockers
-                            html += `<div class="alert alert-info mt-3">
-                                        Already on Waiting List for ${year}.
-                                     </div>`;
-                            return; // 🚫 stop here
+                            if (filter === "Unassigned") {
+                                // Only block in Unassigned filter
+                                html += `<div class="alert alert-info mt-3">
+                                            Already on Waiting List for ${year}.
+                                         </div>`;
+                                return; // 🚫 stop here
+                            }
+                            // If filter = All → let Waiting section handle it, so just skip locker selection
+                            return;
                         }
 
                         const lockerApi = `${window.baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
