@@ -25,6 +25,8 @@
         public string SchoolName { get; set; }
         public int GradeId { get; set; }
         public string GradeName { get; set; }
+        public int? GradeNumber { get; set; }
+        public string? SchoolStudentNumber { get; internal set; }
     }
 
     public class Grades

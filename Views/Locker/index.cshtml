@@ -13,7 +13,9 @@
         {
             <div class="card mb-3 shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    Student: @student.FullName (@student.StudentId)
+                    Student: @student.FullName (@student.StudentId)<br />
+                    <small>Student Number: @student.SchoolStudentNumber</small><br />
+                    <small>Grade: @student.GradeNumber</small>
                 </div>
                 <div class="card-body">
                     <div id="locker-info-@student.StudentId">
@@ -97,13 +99,15 @@
                         const nextYear = currentYear + 1;
                         let html = "";
 
+                        // --- Assigned lockers ---
                         if (assignedLockers && assignedLockers.length > 0) {
                             html += `<h6>Assigned Lockers</h6>`;
                             assignedLockers.forEach(l => {
+
                                 html += `
                                     <div class="mb-2 p-2 border rounded">
                                         <p><strong>Locker Number:</strong> ${l.lockerNumber ?? l.lockerId}</p>
-                                        <p><strong>Grade:</strong> ${l.gradeName} (${l.gradeNumber})</p>
+                                        <p><strong>Grade:</strong> ${l.gradeNumber}</p>
                                         <p><strong>Year:</strong> ${l.year} (${l.yearType === "current" ? "Current" : "Following"})</p>
                                         <p><strong>Approved:</strong> ${l.isAdminApproved ? "✅ Yes" : "❌ No"}</p>
                                         <button class="btn btn-sm btn-danger"
@@ -116,16 +120,25 @@
                             html += `<p>No locker assigned yet.</p>`;
                         }
 
+                        // --- Check year availability/waiting list ---
                         async function checkYear(year, yearType) {
                             if (!assignedLockers.some(l => l.yearType === yearType)) {
-
                                 const waitlistApi = `${baseUrl}/api/LockerWaitingList/IsUserOnWaitingList/${studentId}/${yearType}`;
                                 const waitlistResponse = await fetch(waitlistApi);
                                 const waitlistItems = waitlistResponse.ok ? await waitlistResponse.json() : [];
 
                                 if (waitlistItems && waitlistItems.length > 0) {
+                                    const displayedGradeNumber = yearType === "following"
+                                        ? student.GradeNumber + 1
+                                        : student.GradeNumber;
+
+                                    const displayedGradeName = yearType === "following"
+                                        ? `${student.GradeName}`
+                                        : student.GradeName;
+
                                     html += `<div class="alert alert-info mt-3">
                                         <h6>Waiting List (${year})</h6>
+                                        <p><strong>Grade:</strong> ${displayedGradeNumber}</p>
                                         ${waitlistItems.map(wl => `
                                             <p><strong>School:</strong> ${wl.schoolName}</p>
                                             <p><strong>Grade:</strong> ${wl.gradeName}</p>
@@ -137,7 +150,6 @@
                                         `).join("")}
                                     </div>`;
                                 } else {
-
                                     const lockerApi = `${baseUrl}/Locker/available?schoolId=${schoolId}&gradeId=${gradeId}&yearType=${yearType}`;
                                     const lockerResponse = await fetch(lockerApi);
                                     const result = lockerResponse.ok ? await lockerResponse.json() : [];
@@ -148,7 +160,6 @@
                                     }
 
                                     const lockers = Array.isArray(result) ? result : [];
-
                                     if (!lockers || lockers.length === 0) {
                                         html += `<div class="alert alert-warning mt-3">
                                             No lockers available for ${year}.
@@ -158,15 +169,24 @@
                                             </button>
                                         </div>`;
                                     } else {
+                                        const displayedGradeNumber = yearType === "following"
+                                            ? student.GradeNumber + 1
+                                            : student.GradeNumber;
+
+                                        const displayedGradeName = yearType === "following"
+                                            ? `${student.GradeName} (Next Year)`
+                                            : student.GradeName;
+
                                         let table = `<h6 class="mt-3">Available Lockers for ${year}</h6>
+                                            <p><strong>Grade:</strong> ${displayedGradeNumber}</p>
                                             <table class="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Locker ID</th>
-                                                    <th>Locker Number</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead><tbody>`;
+                                                <thead>
+                                                    <tr>
+                                                        <th>Locker ID</th>
+                                                        <th>Locker Number</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead><tbody>`;
                                         lockers.forEach(locker => {
                                             table += `<tr>
                                                 <td>${locker.lockerId}</td>

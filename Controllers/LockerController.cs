@@ -35,8 +35,10 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         FullName = s.StudentName,
                         GradeId = s.Grades.GradesId,
                         GradeName = s.Grades.GradeName,
+                        GradeNumber = s.Grades.GradeNumber,
                         SchoolId = s.School.SchoolId,
-                        SchoolName = s.School.SchoolName
+                        SchoolName = s.School.SchoolName,
+                        SchoolStudentNumber = s.StudentSchoolNumber
                     })
                     .ToListAsync();
             }
