@@ -118,7 +118,10 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(lockers);
+            //Exam Testing : Uncomment for waiting list testing
+            return Ok(new List<LockerDto>());
+
+            //return Ok(lockers);    
 
         }
 
@@ -471,7 +474,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             model.ShowStudentSection = true;
 
-            // load Grades dropdown so page still renders fully
             model.Grades = await (from sg in _context.SchoolGrades
                                   join g in _context.Grades on sg.GradeId equals g.GradesId
                                   where sg.SchoolId == model.SchoolId

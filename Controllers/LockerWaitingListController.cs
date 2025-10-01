@@ -58,7 +58,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<LockerWaitingList>> GetWaitingListItem(int id) //TODO this endpoint to be made into a function in services or private
+        public async Task<ActionResult<LockerWaitingList>> GetWaitingListItem(int id) 
         {
             var item = await _context.LockerWaitingLists.FindAsync(id);
             if (item == null) return NotFound();
@@ -71,39 +71,72 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto == null || dto.StudentId <= 0)
                 return BadRequest("Invalid request.");
 
+            // If following year → bump grade
             if (dto.CurrentYear == false)
             {
                 dto.GradeId = await (
                     from g in _context.Grades
                     join sg in _context.SchoolGrades on g.GradesId equals sg.GradeId
                     where sg.SchoolId == dto.SchoolId &&
-                    g.GradeNumber > _context.Grades
-              .Where(g2 => g2.GradesId == dto.GradeId)
-              .Select(g2 => g2.GradeNumber)
-              .FirstOrDefault()
+                          g.GradeNumber > _context.Grades
+                                .Where(g2 => g2.GradesId == dto.GradeId)
+                                .Select(g2 => g2.GradeNumber)
+                                .FirstOrDefault()
                     orderby g.GradeNumber
                     select g.GradesId
-                    ).FirstOrDefaultAsync();
+                ).FirstOrDefaultAsync();
             }
 
-            LockerWaitingList existingItem = new LockerWaitingList();
+            var waitingListItem = new LockerWaitingList
+            {
+                SchoolId = dto.SchoolId,
+                GradeId = dto.GradeId,
+                AppliedDate = DateTime.Now,
+                StudentId = dto.StudentId,
+                Status = true,
+                CurrentYear = dto.CurrentYear,
+                FollowingYear = dto.FollowingYear
+            };
 
-            existingItem.SchoolId = dto.SchoolId;
-            existingItem.GradeId = dto.GradeId;
-            existingItem.AppliedDate = DateTime.Now;
-            existingItem.StudentId = dto.StudentId;
-            existingItem.Status = true;
-            existingItem.CurrentYear = dto.CurrentYear;
-            existingItem.FollowingYear = dto.FollowingYear;
+            _context.LockerWaitingLists.Update(waitingListItem);
 
-            _context.LockerWaitingLists.Update(existingItem);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
 
-            //TODO: Add email confirming place on waiting list.
+                // ✅ Fetch student and grade for email
+                var student = await _context.Students
+                    .Include(s => s.Parent)
+                    .Include(s => s.Grades)
+                    .FirstOrDefaultAsync(s => s.StudentId == dto.StudentId);
 
-            return Ok(existingItem);
+                if (student?.Parent?.ParentEmail != null)
+                {
+                    await EmailHelper.SendEmailAsync(
+                        student.Parent.ParentEmail,
+                        "Waiting List Placement",
+                        $"Dear Parent,\n\n{student.StudentName} has been added to the waiting list for Grade {student.Grades.GradeNumber}."
+                    );
+                }
 
+                // ✅ Return flat response (no cycles)
+                return Ok(new
+                {
+                    Message = "Waiting list assigned successfully.",
+                    StudentId = waitingListItem.StudentId,
+                    SchoolId = waitingListItem.SchoolId,
+                    GradeId = waitingListItem.GradeId,
+                    AppliedDate = waitingListItem.AppliedDate,
+                    CurrentYear = waitingListItem.CurrentYear,
+                    FollowingYear = waitingListItem.FollowingYear
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error saving waiting list: {ex.Message}");
+            }
         }
+
 
         [HttpPost("Unassign")]
         public async Task<IActionResult> UnassignWaitingList([FromBody] LockerWaitingListDto dto)
