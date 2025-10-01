@@ -3,6 +3,7 @@ using ICT371525Y_School_Locker_App.DTO;
 using ICT371525Y_School_Locker_App.Helper;
 using ICT371525Y_School_Locker_App.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace ICT371525Y_School_Locker_App.Controllers
@@ -434,6 +435,52 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             return RedirectToAction("Index", new { parentId = parentId });
 
+        }
+
+        [HttpPost("SearchStudent")]
+        public async Task<IActionResult> SearchStudent(AdminViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.StudentSchoolNumber))
+            {
+                ModelState.AddModelError("", "Student School Number is required.");
+                return View("Index", model);
+            }
+
+            var student = await _context.Students
+                .Include(s => s.Grades)
+                .Include(s => s.School)
+                .FirstOrDefaultAsync(s => s.StudentSchoolNumber == model.StudentSchoolNumber);
+
+            if (student == null)
+            {
+                ModelState.AddModelError("", "Student not found.");
+                model.ShowStudentSection = true;
+                return View("Index", model);
+            }
+
+            model.FoundStudent = new StudentDto
+            {
+                StudentId = student.StudentId,
+                StudentName = student.StudentName,
+                StudentSchoolNumber = student.StudentSchoolNumber,
+                GradesId = student.GradesId,
+                SchoolId = student.SchoolId
+            };
+
+            model.ShowStudentSection = true;
+
+            // load Grades dropdown so page still renders fully
+            model.Grades = await (from sg in _context.SchoolGrades
+                                  join g in _context.Grades on sg.GradeId equals g.GradesId
+                                  where sg.SchoolId == model.SchoolId
+                                  orderby g.GradeNumber
+                                  select new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                  {
+                                      Value = g.GradesId.ToString(),
+                                      Text = g.GradeName
+                                  }).ToListAsync();
+
+            return View("Index", model);
         }
 
         private bool LockerExists(int id) =>

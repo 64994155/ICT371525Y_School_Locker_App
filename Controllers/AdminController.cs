@@ -279,6 +279,60 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View("Index", vm);
         }
 
+        [HttpPost("SearchStudentNumber")]
+        public async Task<IActionResult> SearchStudentNumber(AdminViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.StudentSchoolNumber))
+            {
+                ModelState.AddModelError("", "Student School Number is required.");
+                model.ShowStudentSection = true;
+                return View("Index", model);
+            }
+
+            var student = await _context.Students
+                .Include(s => s.Grades)
+                .Include(s => s.School)
+                .Where(s => s.StudentSchoolNumber == model.StudentSchoolNumber && s.SchoolId == model.SchoolId)
+                .Select(s => new StudentDto
+                {
+                    StudentId = s.StudentId,
+                    StudentName = s.StudentName,
+                    StudentSchoolNumber = s.StudentSchoolNumber,
+                    GradesId = s.GradesId,
+                    SchoolId = s.SchoolId
+                })
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+            {
+                ModelState.AddModelError("", "Student not found.");
+                model.ShowStudentSection = true;
+                return View("Index", model);
+            }
+
+            var vm = new AdminViewModel
+            {
+                AdminName = model.AdminName,
+                SchoolId = model.SchoolId,
+                StudentSchoolNumber = model.StudentSchoolNumber,
+                FoundStudent = student,  
+                ShowStudentSection = true,
+                GradeFilter = "All"
+            };
+
+            vm.Grades = await (from sg in _context.SchoolGrades
+                               join g in _context.Grades on sg.GradeId equals g.GradesId
+                               where sg.SchoolId == vm.SchoolId
+                               orderby g.GradeNumber
+                               select new SelectListItem
+                               {
+                                   Value = g.GradesId.ToString(),
+                                   Text = g.GradeName
+                               }).ToListAsync();
+
+            return View("Index", vm);
+        }
+
     }
 }
 

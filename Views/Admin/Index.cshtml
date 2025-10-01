@@ -33,6 +33,20 @@
         </div>
     </div>
 
+    <!-- Student Search Card -->
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark">
+                Manage Students by School Number
+            </div>
+            <div class="card-body">
+                <button id="showStudentSectionBtn" class="btn btn-outline-warning w-100">
+                    Student School Number
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <!-- Parent Section -->
         <div class="col-md-12">
@@ -136,12 +150,43 @@
     </div>
 </div>
 
+<!-- Student Search Section -->
+<div class="col-md-12">
+    <div id="studentSection" style="@(Model.ShowStudentSection ? "display:block;" : "display:none;")">
+        <h2>Search Student by Number</h2>
+        <form asp-action="SearchStudentNumber" method="post" class="mb-4">
+            <input type="hidden" asp-for="SchoolId" />
+            <div class="form-group mb-2">
+                <label>Student School Number</label>
+                <input asp-for="StudentSchoolNumber" class="form-control" placeholder="Enter Student School Number" />
+            </div>
+            <button type="submit" class="btn btn-info">Search</button>
+        </form>
+
+        @if (Model.FoundStudent != null)
+        {
+            <hr />
+            <h3>Search Result</h3>
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    @Model.FoundStudent.StudentName (@Model.FoundStudent.StudentSchoolNumber)
+                </div>
+                <div class="card-body">
+                    <div id="locker-info-@Model.FoundStudent.StudentId">
+                        <p>Loading locker info...</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
 @section Scripts {
     <script>
         window.baseUrl = window.location.origin;
         const loaders = {};
 
-        document.addEventListener("DOMContentLoaded", function () {
+            document.addEventListener("DOMContentLoaded", function () {
             // Toggle sections
             document.getElementById("showParentSectionBtn").addEventListener("click", () => {
                 const el = document.getElementById("parentSection");
@@ -149,6 +194,11 @@
             });
             document.getElementById("showGradeSectionBtn").addEventListener("click", () => {
                 const el = document.getElementById("gradeSection");
+                el.style.display = el.style.display === "none" ? "block" : "none";
+            });
+
+            document.getElementById("showStudentSectionBtn").addEventListener("click", () => {
+                const el = document.getElementById("studentSection");
                 el.style.display = el.style.display === "none" ? "block" : "none";
             });
 
@@ -164,6 +214,13 @@
                                 loadLockersForStudent(@student.StudentId, @student.SchoolId, @student.GradesId, filter);
                             </text>
                     }
+            }
+
+            @if (Model.FoundStudent != null)
+            {
+                    <text>
+                        loadLockersForStudent(@Model.FoundStudent.StudentId, @Model.FoundStudent.SchoolId, @Model.FoundStudent.GradesId, "All");
+                    </text>
             }
         });
 

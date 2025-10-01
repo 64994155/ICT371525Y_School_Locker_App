@@ -25,9 +25,14 @@ namespace ICT371525Y_School_Locker_App.DTO
 
         public bool ShowParentSection { get; set; }
         public bool ShowGradeSection { get; set; }
+        public bool ShowStudentSection { get; set; }
 
         public string SearchFilter { get; set; } // "all" or "waiting"
 
         public string GradeFilter { get; set; }
+
+        public string? StudentSchoolNumber { get; set; }
+
+        public StudentDto? FoundStudent { get; set; }
     }
 }
