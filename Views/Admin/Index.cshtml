@@ -219,7 +219,7 @@
                     if (student.assigned?.length) html = renderAssigned(student.assigned, student.studentId);
                     break;
                 case "Waiting":
-                    if (student.waiting?.length) html = renderWaiting(student.waiting, student.studentId);
+                    if (student.waiting?.length) html = renderWaiting(student.waiting, student.studentId, student.unassigned);
                     break;
                 case "Unassigned":
                     if (student.unassigned &&
@@ -229,7 +229,7 @@
                     break;
                 case "All":
                 default:
-                    if (student.waiting?.length) html += renderWaiting(student.waiting, student.studentId);
+                    if (student.waiting?.length) html += renderWaiting(student.waiting, student.studentId, student.unassigned);
                     if (student.assigned?.length) html += renderAssigned(student.assigned, student.studentId);
                     if (student.unassigned &&
                         (student.unassigned.current?.length || student.unassigned.following?.length)) {
@@ -292,17 +292,33 @@
             return html;
         }
 
-        function renderWaiting(waiting, studentId) {
+        function renderWaiting(waiting, studentId, unassigned) {
             if (!waiting || !waiting.length) return "";
             let html = `<h6>Waiting List</h6>`;
+
             waiting.forEach(wl => {
+                // ✅ Check availability based on requested year type
+                const hasAvailable =
+                    (wl.yearType === "current" && (unassigned?.current?.length ?? 0) > 0) ||
+                    (wl.yearType === "following" && (unassigned?.following?.length ?? 0) > 0);
+
                 html += `<div class="alert alert-info mb-2">
                             <p><strong>School:</strong> ${wl.schoolName}</p>
                             <p><strong>Grade:</strong> ${wl.gradeName}</p>
                             <p><strong>Applied:</strong> ${new Date(wl.appliedDate).toLocaleDateString()}</p>
-                            <button class="btn btn-sm btn-danger" onclick="cancelWaitingList(${studentId}, ${wl.schoolId}, ${wl.gradeId}, '${wl.yearType}')">Cancel</button>
+                            <button class="btn btn-sm btn-danger"
+                                    onclick="cancelWaitingList(${studentId}, ${wl.schoolId}, ${wl.gradeId}, '${wl.yearType}')">
+                                Cancel
+                            </button>
+                            ${hasAvailable
+                                ? `<button class="btn btn-sm btn-primary ms-2"
+                                           onclick="assignFromWaiting(${studentId}, '${wl.yearType}', ${wl.schoolId}, ${wl.gradeId})">
+                                       Assign
+                                   </button>`
+                                : ``}
                          </div>`;
             });
+
             return html;
         }
 
@@ -357,6 +373,39 @@
             await fetch(`${window.baseUrl}/api/LockerWaitingList/Unassign`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({studentId,schoolId,gradeId,yearType})});
             refreshSearch(studentId);
         }
+        async function assignFromWaiting(studentId, yearType, schoolId, gradeId) {
+            try {
+                // pick the first available locker for that year
+                const res = await fetch(`${window.baseUrl}/Admin/All/${studentId}`);
+                if (!res.ok) throw new Error(await res.text());
+                const studentData = await res.json();
+
+                let lockerList = yearType === "current"
+                    ? studentData.unassigned.current
+                    : studentData.unassigned.following;
+
+                if (!lockerList || !lockerList.length) {
+                    alert("No lockers available for this year type.");
+                    return;
+                }
+
+                const chosenLocker = lockerList[0]; // or build a dropdown if you want selection
+
+                await fetch(`${window.baseUrl}/Locker/AdminAssignLocker`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        lockerId: chosenLocker.lockerId,
+                        studentId,
+                        yearType
+                    })
+                });
+
+                refreshSearch(studentId);
+            } catch (err) {
+                console.error("Error assigning from waiting list:", err);
+            }
+        }
 
         function refreshSearch(studentId){
             const studentForm=document.getElementById("studentSearchForm");
@@ -364,5 +413,6 @@
             if(studentForm && document.getElementById("studentSection").style.display!=="none") studentForm.submit();
             else if(gradeForm && document.getElementById("gradeSection").style.display!=="none") gradeForm.submit();
         }
+
     </script>
 }

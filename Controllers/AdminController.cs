@@ -386,7 +386,14 @@ namespace ICT371525Y_School_Locker_App.Controllers
         {
             var student = await _context.Students
                 .Where(s => s.StudentId == studentId)
-                .Select(s => new { s.StudentId, s.StudentName, s.StudentSchoolNumber, s.GradesId, s.SchoolId })
+                .Select(s => new
+                {
+                    s.StudentId,
+                    s.StudentName,
+                    s.StudentSchoolNumber,
+                    s.GradesId,
+                    s.SchoolId
+                })
                 .FirstOrDefaultAsync();
 
             if (student == null)
@@ -437,10 +444,10 @@ namespace ICT371525Y_School_Locker_App.Controllers
             var currentAvailable = new List<object>();
             var followingAvailable = new List<object>();
 
+            // ✅ Only block if student ALREADY has an assigned locker, 
+            // but DO NOT block if they are only on the waiting list.
             bool hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
-            bool hasCurrentWaiting = waiting.Any(w => w.YearType == "current");
-
-            if (!hasCurrentAssigned && !hasCurrentWaiting)
+            if (!hasCurrentAssigned)
             {
                 currentAvailable = await _context.Lockers
                     .Where(l =>
@@ -452,9 +459,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             }
 
             bool hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
-            bool hasFollowingWaiting = waiting.Any(w => w.YearType == "following");
-
-            if (!hasFollowingAssigned && !hasFollowingWaiting)
+            if (!hasFollowingAssigned)
             {
                 followingAvailable = await _context.Lockers
                     .Where(l =>
@@ -476,13 +481,19 @@ namespace ICT371525Y_School_Locker_App.Controllers
             });
         }
 
-
         [HttpGet("AllByGrade/{schoolId}/{gradeId}")]
         public async Task<IActionResult> GetAllByGrade(int schoolId, int gradeId)
         {
             var students = await _context.Students
                 .Where(s => s.SchoolId == schoolId && s.GradesId == gradeId)
-                .Select(s => new { s.StudentId, s.StudentName, s.StudentSchoolNumber, s.SchoolId, s.GradesId })
+                .Select(s => new
+                {
+                    s.StudentId,
+                    s.StudentName,
+                    s.StudentSchoolNumber,
+                    s.SchoolId,
+                    s.GradesId
+                })
                 .ToListAsync();
 
             var result = new List<object>();
@@ -532,14 +543,13 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     })
                     .ToListAsync();
 
-                // --- Unassigned logic (same as before)
+                // --- Unassigned logic (fixed) ---
                 var currentAvailable = new List<object>();
                 var followingAvailable = new List<object>();
 
+                // Only block if already assigned (NOT if waiting)
                 bool hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
-                bool hasCurrentWaiting = waiting.Any(w => w.YearType == "current");
-
-                if (!hasCurrentAssigned && !hasCurrentWaiting)
+                if (!hasCurrentAssigned)
                 {
                     currentAvailable = await _context.Lockers
                         .Where(l =>
@@ -551,9 +561,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 }
 
                 bool hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
-                bool hasFollowingWaiting = waiting.Any(w => w.YearType == "following");
-
-                if (!hasFollowingAssigned && !hasFollowingWaiting)
+                if (!hasFollowingAssigned)
                 {
                     followingAvailable = await _context.Lockers
                         .Where(l =>
@@ -564,6 +572,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         .ToListAsync<object>();
                 }
 
+                // --- earliest waiting applied date for ordering
                 DateTime? earliestAppliedDate = waiting.Any()
                     ? waiting.Min(w => w.AppliedDate)
                     : (DateTime?)null;
