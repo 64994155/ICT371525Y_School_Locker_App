@@ -81,7 +81,7 @@ public partial class LockerAdminDbContext : DbContext
 
             entity.HasIndex(e => e.SchoolId, "IX_Lockers_SchoolID");
 
-            entity.HasIndex(e => e.StudentId, "IX_Lockers_StudentID");
+            entity.HasIndex(e => e.StudentIdCurrentBookingYear, "IX_Lockers_StudentID");
 
             entity.Property(e => e.LockerId).HasColumnName("LockerID");
             entity.Property(e => e.AssignedDate).HasColumnType("datetime");
@@ -92,7 +92,6 @@ public partial class LockerAdminDbContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.SchoolId).HasColumnName("SchoolID");
-            entity.Property(e => e.StudentId).HasColumnName("StudentID");
 
             entity.HasOne(d => d.Grade).WithMany(p => p.Lockers)
                 .HasForeignKey(d => d.GradeId)
@@ -102,8 +101,8 @@ public partial class LockerAdminDbContext : DbContext
                 .HasForeignKey(d => d.SchoolId)
                 .HasConstraintName("FK__Lockers__SchoolI__3E52440B");
 
-            entity.HasOne(d => d.Student).WithMany(p => p.Lockers)
-                .HasForeignKey(d => d.StudentId)
+            entity.HasOne(d => d.StudentIdCurrentBookingYearNavigation).WithMany(p => p.Lockers)
+                .HasForeignKey(d => d.StudentIdCurrentBookingYear)
                 .HasConstraintName("FK__Lockers__Student__403A8C7D");
         });
 

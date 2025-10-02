@@ -11,13 +11,13 @@ public partial class Locker
 
     public int? GradeId { get; set; }
 
-    public int? StudentId { get; set; }
+    public int? StudentIdCurrentBookingYear { get; set; }
 
     public string? LockerNumber { get; set; }
 
     public bool? IsAssigned { get; set; }
 
-    public bool? IsAdminApproved { get; set; }
+    public bool? IsAdminApprovedCurrentBookingYear { get; set; }
 
     public DateTime? AssignedDate { get; set; }
 
@@ -25,10 +25,13 @@ public partial class Locker
 
     public bool? FollowingBookingYear { get; set; }
 
+    public int? StudentIdFollowingBookingYear { get; set; }
+
+    public bool IsAdminApprovedFollowingBookingYear { get; set; }
+
     public virtual Grade? Grade { get; set; }
 
     public virtual School? School { get; set; }
 
-    public virtual Student? Student { get; set; }
-
+    public virtual Student? StudentIdCurrentBookingYearNavigation { get; set; }
 }

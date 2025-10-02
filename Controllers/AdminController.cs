@@ -148,13 +148,20 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             if (locker == null)
                 return NotFound("Locker not found.");
-
-            locker.IsAdminApproved = true;
+            if (dto.YearType == "current")
+            {
+                locker.IsAdminApprovedCurrentBookingYear = true;
+            }
+            else if (dto.YearType == "following")
+            {
+                locker.IsAdminApprovedFollowingBookingYear = true;
+            }
+      
             await _context.SaveChangesAsync();
 
             var student = await _context.Students
                 .Include(s => s.Parent)
-                .FirstOrDefaultAsync(s => s.StudentId == locker.StudentId);
+                .FirstOrDefaultAsync(s => s.StudentId == dto.StudentID);
 
             if (student?.Parent?.ParentEmail != null)
             {
@@ -200,13 +207,13 @@ namespace ICT371525Y_School_Locker_App.Controllers
             // --- Precompute sets for flags ---
             var currentYearLockers = await _context.Lockers
                 .Where(l => (l.CurrentBookingYear ?? false) == true)
-                .Select(l => l.StudentId)
+                .Select(l => l.StudentIdCurrentBookingYear)
                 .Distinct()
                 .ToListAsync();
 
             var followingYearLockers = await _context.Lockers
                 .Where(l => (l.FollowingBookingYear ?? false) == true)
-                .Select(l => l.StudentId)
+                .Select(l => l.StudentIdFollowingBookingYear)
                 .Distinct()
                 .ToListAsync();
 
@@ -385,22 +392,30 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (student == null)
                 return NotFound("Student not found.");
 
-            // assigned
+            // --- Assigned lockers
             var assigned = await _context.Lockers
-                .Where(l => l.StudentId == studentId && l.IsAssigned == true)
+                .Where(l =>
+                    (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
+                    (l.StudentIdFollowingBookingYear == studentId && l.FollowingBookingYear == true)
+                )
                 .Select(l => new
                 {
                     l.LockerId,
                     l.LockerNumber,
-                    l.IsAdminApproved,
                     l.CurrentBookingYear,
                     l.FollowingBookingYear,
+                    l.IsAdminApprovedCurrentBookingYear,
+                    l.IsAdminApprovedFollowingBookingYear,
                     YearType = l.CurrentBookingYear == true ? "current" :
-                               (l.FollowingBookingYear == true ? "following" : "unknown")
+                               (l.FollowingBookingYear == true ? "following" : "unknown"),
+                    // ✅ Unified approval flag
+                    IsAdminApproved = l.CurrentBookingYear == true
+                        ? l.IsAdminApprovedCurrentBookingYear
+                        : l.IsAdminApprovedFollowingBookingYear
                 })
                 .ToListAsync();
 
-            // waiting
+            // --- Waiting list
             var waiting = await _context.LockerWaitingLists
                 .Include(w => w.Grade)
                 .Include(w => w.School)
@@ -418,7 +433,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToListAsync();
 
-            // unassigned
+            // --- Unassigned (available lockers)
             var currentAvailable = new List<object>();
             var followingAvailable = new List<object>();
 
@@ -461,6 +476,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             });
         }
 
+
         [HttpGet("AllByGrade/{schoolId}/{gradeId}")]
         public async Task<IActionResult> GetAllByGrade(int schoolId, int gradeId)
         {
@@ -475,22 +491,30 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 int studentId = student.StudentId;
 
-                // assigned
+                // --- Assigned lockers
                 var assigned = await _context.Lockers
-                    .Where(l => l.StudentId == studentId && l.IsAssigned == true)
+                    .Where(l =>
+                        (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
+                        (l.StudentIdFollowingBookingYear == studentId && l.FollowingBookingYear == true)
+                    )
                     .Select(l => new
                     {
                         l.LockerId,
                         l.LockerNumber,
-                        l.IsAdminApproved,
                         l.CurrentBookingYear,
                         l.FollowingBookingYear,
+                        l.IsAdminApprovedCurrentBookingYear,
+                        l.IsAdminApprovedFollowingBookingYear,
                         YearType = l.CurrentBookingYear == true ? "current" :
-                                   (l.FollowingBookingYear == true ? "following" : "unknown")
+                                   (l.FollowingBookingYear == true ? "following" : "unknown"),
+                        // ✅ Unified approval flag
+                        IsAdminApproved = l.CurrentBookingYear == true
+                            ? l.IsAdminApprovedCurrentBookingYear
+                            : l.IsAdminApprovedFollowingBookingYear
                     })
                     .ToListAsync();
 
-                // waiting
+                // --- Waiting list
                 var waiting = await _context.LockerWaitingLists
                     .Include(w => w.Grade)
                     .Include(w => w.School)
@@ -508,7 +532,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     })
                     .ToListAsync();
 
-                // unassigned logic same as before
+                // --- Unassigned logic (same as before)
                 var currentAvailable = new List<object>();
                 var followingAvailable = new List<object>();
 
@@ -540,7 +564,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         .ToListAsync<object>();
                 }
 
-                // pick the earliest waiting date (if any)
                 DateTime? earliestAppliedDate = waiting.Any()
                     ? waiting.Min(w => w.AppliedDate)
                     : (DateTime?)null;
@@ -557,7 +580,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 });
             }
 
-            // order students by earliest waiting applied date
+            // --- Order students by earliest waiting date
             var orderedResult = result
                 .OrderBy(r => ((DateTime?)r.GetType().GetProperty("EarliestAppliedDate").GetValue(r)) ?? DateTime.MaxValue)
                 .ToDictionary(
@@ -576,4 +599,5 @@ namespace ICT371525Y_School_Locker_App.Controllers
         }
     }
 }
+
 

@@ -7,9 +7,10 @@
         public string? Location { get; set; }
         public string? SchoolName { get; set; }
         public int StudentID { get; set; }
-        public bool? IsAdminApproved { get; set; }
         public string? YearType { get; set; }
         public int? SchoolId { get; internal set; }
         public int? GradeId { get; internal set; }
+        public bool? CurrentBookingYear { get; set; }
+        public bool? FollowingBookingYear { get; set; }
     }
 }

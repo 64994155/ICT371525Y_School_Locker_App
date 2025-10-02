@@ -172,11 +172,24 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto.LockerId <= 0 || dto.StudentID <= 0)
                 return BadRequest("Invalid locker or student ID.");
 
-            var locker = await _context.Lockers
-                .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId && l.StudentId == dto.StudentID && l.IsAssigned == true);
 
-            if (locker == null)
-                return NotFound("Locker not assigned to this student or does not exist.");
+            Locker locker;
+            if (dto.YearType == "current")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId &&
+                                              (l.CurrentBookingYear == true));
+            }
+            else if (dto.YearType == "following")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId &&
+                                              (l.FollowingBookingYear == true));
+            }
+            else
+            {
+                return NotFound("Invalid year type specified.");
+            }
 
             var student = await _context.Students
                 .Include(s => s.Parent)
@@ -188,18 +201,20 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (string.IsNullOrEmpty(student.Parent?.ParentEmail))
                 return BadRequest("Parent email not available.");
 
-            locker.IsAssigned = false;
-            locker.StudentId = null;
-            locker.AssignedDate = null;
-            locker.IsAdminApproved = null;
-
             if (dto.YearType?.ToLower() == "current")
             {
                 locker.CurrentBookingYear = false;
+                locker.IsAdminApprovedCurrentBookingYear = false;
+                locker.StudentIdCurrentBookingYear = null;
+                locker.AssignedDate = null;
+            
             }
             else if (dto.YearType?.ToLower() == "following")
             {
                 locker.FollowingBookingYear = false;
+                locker.IsAdminApprovedFollowingBookingYear = false;
+                locker.StudentIdFollowingBookingYear = null;
+                locker.AssignedDate = null;
             }
 
             try
@@ -227,8 +242,22 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto.LockerId <= 0 || dto.StudentID <= 0)
                 return BadRequest("Invalid locker or student ID.");
 
-            var locker = await _context.Lockers
-                .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId && l.IsAssigned == false);
+            Locker locker;
+
+            if (dto.YearType == "current")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
+            }
+            else if (dto.YearType == "following")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
+            }
+            else
+            {
+                return NotFound("Invalid year type specified.");
+            }
 
             if (locker == null)
                 return NotFound("Locker already assigned or does not exist.");
@@ -244,12 +273,22 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (string.IsNullOrEmpty(student.Parent?.ParentEmail))
                 return BadRequest("Parent email not available.");
 
-            locker.IsAssigned = true;
-            locker.StudentId = dto.StudentID;
-            locker.AssignedDate = DateTime.UtcNow;
 
-            locker.CurrentBookingYear = dto.YearType?.ToLower() == "current";
-            locker.FollowingBookingYear = dto.YearType?.ToLower() == "following";
+            if (dto.YearType?.ToLower() == "current")
+            {
+                locker.CurrentBookingYear = true;
+                locker.IsAdminApprovedCurrentBookingYear = true;
+                locker.StudentIdCurrentBookingYear = dto.StudentID;
+                locker.AssignedDate = new DateTime();
+
+            }
+            else if (dto.YearType?.ToLower() == "following")
+            {
+                locker.FollowingBookingYear = true;
+                locker.IsAdminApprovedFollowingBookingYear = true;
+                locker.StudentIdFollowingBookingYear = dto.StudentID; ;
+                locker.AssignedDate = new DateTime();
+            }
 
             try
             {
@@ -275,8 +314,22 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto.LockerId <= 0 || dto.StudentID <= 0)
                 return BadRequest("Invalid locker or student ID.");
 
-            var locker = await _context.Lockers
-                .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId && l.IsAssigned == false);
+            Locker locker;
+
+            if (dto.YearType == "current")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
+            }
+            else if (dto.YearType == "following")
+            {
+                locker = await _context.Lockers
+                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
+            }
+            else
+            {
+                return NotFound("Invalid year type specified.");
+            }
 
             if (locker == null)
                 return NotFound("Locker already assigned or does not exist.");
@@ -295,6 +348,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             bool isCurrentYear = dto.YearType?.ToLower() == "current";
             bool isFollowingYear = dto.YearType?.ToLower() == "following";
 
+            // 🔎 check waiting list
             var waitingListItem = await _context.LockerWaitingLists.FirstOrDefaultAsync(wl =>
                 wl.StudentId == dto.StudentID &&
                 wl.SchoolId == locker.SchoolId &&
@@ -311,18 +365,27 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 _context.LockerWaitingLists.Remove(waitingListItem);
             }
 
-            locker.IsAssigned = true;
-            locker.StudentId = dto.StudentID;
-            locker.AssignedDate = DateTime.UtcNow;
-            locker.IsAdminApproved = true;
-
-            locker.CurrentBookingYear = isCurrentYear;
-            locker.FollowingBookingYear = isFollowingYear;
+            // 🔧 assign locker based on year type
+            if (isCurrentYear)
+            {
+                locker.CurrentBookingYear = true;
+                locker.IsAdminApprovedCurrentBookingYear = true;
+                locker.StudentIdCurrentBookingYear = dto.StudentID;
+                locker.AssignedDate = DateTime.Now;
+            }
+            else if (isFollowingYear)
+            {
+                locker.FollowingBookingYear = true;
+                locker.IsAdminApprovedFollowingBookingYear = true;
+                locker.StudentIdFollowingBookingYear = dto.StudentID;
+                locker.AssignedDate = DateTime.Now;
+            }
 
             try
             {
                 await _context.SaveChangesAsync();
 
+                // 🔔 send emails
                 if (wasOnWaitingList)
                 {
                     await EmailHelper.SendEmailAsync(
@@ -348,57 +411,70 @@ namespace ICT371525Y_School_Locker_App.Controllers
             }
         }
 
+
         [HttpGet("AssignedLocker/{studentId}")]
         public async Task<IActionResult> GetAssignedLocker(int studentId)
         {
-  
-                var currentYear = DateTime.Now.Year;
-                var nextYear = currentYear + 1;
+            var currentYear = DateTime.Now.Year;
+            var nextYear = currentYear + 1;
 
-                var lockers = await _context.Lockers
-                        .Where(l => l.StudentId == studentId &&
-                ((l.CurrentBookingYear ?? false) || (l.FollowingBookingYear ?? false)))
-            .Select(l => new
-                    {
+            var lockers = await _context.Lockers
+                .Where(l =>
+                    (l.StudentIdCurrentBookingYear == studentId && (l.CurrentBookingYear ?? false)) ||
+                    (l.StudentIdFollowingBookingYear == studentId && (l.FollowingBookingYear ?? false))
+                )
+                .Select(l => new
+                {
                     l.LockerId,
                     l.LockerNumber,
-                    GradeId = l.Grade.GradesId,
-                    GradeName = l.Grade.GradeName,
-                    GradeNumber = l.Grade.GradeNumber,
-                    l.IsAdminApproved,
+                    l.Grade.GradesId,
+                    l.Grade.GradeName,
+                    l.Grade.GradeNumber,
+                    l.IsAdminApprovedCurrentBookingYear,
+                    l.IsAdminApprovedFollowingBookingYear,
                     l.CurrentBookingYear,
                     l.FollowingBookingYear
                 })
                 .ToListAsync();
 
-                var assignedLockers = lockers.SelectMany(l => new[]
+            var assignedLockers = lockers.SelectMany(l =>
+            {
+                var list = new List<AssignedLockerDto>();
+
+                if (l.CurrentBookingYear == true)
                 {
-            (bool)l.CurrentBookingYear ? new {
-                l.LockerId,
-                l.LockerNumber,
-                l.GradeId,
-                l.GradeName,
-                l.GradeNumber,
-                l.IsAdminApproved,
-                Year = currentYear,
-                YearType = "current"
-            } : null,
+                    list.Add(new AssignedLockerDto
+                    {
+                        LockerId = l.LockerId,
+                        LockerNumber = l.LockerNumber,
+                        GradeId = l.GradesId,
+                        GradeName = l.GradeName,
+                        GradeNumber = l.GradeNumber,
+                        Year = currentYear,
+                        YearType = "current",
+                        IsAdminApproved = l.IsAdminApprovedCurrentBookingYear
+                    });
+                }
 
-            (bool)l.FollowingBookingYear ? new {
-                l.LockerId,
-                l.LockerNumber,
-                l.GradeId,
-                l.GradeName,
-                l.GradeNumber,
-                l.IsAdminApproved,
-                Year = nextYear,
-                YearType = "following"
-            } : null
-        }.Where(x => x != null))
-                .ToList();
+                if (l.FollowingBookingYear == true)
+                {
+                    list.Add(new AssignedLockerDto
+                    {
+                        LockerId = l.LockerId,
+                        LockerNumber = l.LockerNumber,
+                        GradeId = l.GradesId,
+                        GradeName = l.GradeName,
+                        GradeNumber = l.GradeNumber,
+                        Year = nextYear,
+                        YearType = "following",
+                        IsAdminApproved = l.IsAdminApprovedFollowingBookingYear
+                    });
+                }
 
-                return Ok(assignedLockers);
+                return list;
+            }).ToList();
 
+            return Ok(assignedLockers);
         }
 
         [HttpPost("AddStudent")]

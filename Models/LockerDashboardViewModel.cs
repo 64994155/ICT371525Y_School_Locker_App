@@ -50,6 +50,8 @@
         public string LockerNumber { get; set; }
         public bool IsAssigned { get; set; }
         public bool IsAdminApproved { get; set; }
+        public bool IsAdminApprovedFollowingBookingYear { get; set; }
+        public bool? IsAdminApprovedCurrentBookingYear { get; set; }
         public DateTime? AssignedDate { get; set; }
 }
 }
