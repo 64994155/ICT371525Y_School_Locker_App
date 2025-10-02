@@ -13,7 +13,7 @@ namespace ICT371525Y_School_Locker_App.DTO
 
         public int GradeId { get; set; }
 
-        public int StudentId { get; set; }
+        public int? StudentId { get; set; }
 
         public DateTime AppliedDate { get; set; }
 

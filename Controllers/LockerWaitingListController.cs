@@ -34,11 +34,11 @@ namespace ICT371525Y_School_Locker_App.Controllers
             var items = await _context.LockerWaitingLists
                 .Where(wl => wl.StudentId == studentId &&
                              ((checkCurrent && wl.CurrentYear == true) ||
-                              (checkFollowing && wl.FollowingYear == true) &&
-                              (wl.Status == true))
-                      )
+                              (checkFollowing && wl.FollowingYear == true)) &&
+                              wl.Status == true)
                 .Include(wl => wl.School)
                 .Include(wl => wl.Grade)
+                .OrderBy(wl => wl.AppliedDate)
                 .Select(wl => new LockerWaitingListDto
                 {
                     AppliedDate = wl.AppliedDate,
@@ -229,6 +229,37 @@ namespace ICT371525Y_School_Locker_App.Controllers
             item.WaitingListId = newItem.WaitingListId;
 
             return CreatedAtAction(nameof(GetWaitingListItem), new { id = newItem.WaitingListId }, item);
+        }
+
+        [HttpGet("ByGrade/{schoolId}/{gradeId}/{yearType}")]
+        public async Task<IActionResult> GetWaitingListByGrade(int schoolId, int gradeId, string yearType)
+        {
+            bool checkCurrent = yearType.Equals("current", StringComparison.OrdinalIgnoreCase);
+            bool checkFollowing = yearType.Equals("following", StringComparison.OrdinalIgnoreCase);
+
+            var items = await _context.LockerWaitingLists
+                .Where(wl => wl.SchoolId == schoolId &&
+                             wl.GradeId == gradeId &&
+                             wl.Status == true &&
+                             ((checkCurrent && wl.CurrentYear == true) ||
+                              (checkFollowing && wl.FollowingYear == true)))
+                .Include(wl => wl.School)
+                .Include(wl => wl.Grade)
+                .OrderBy(wl => wl.AppliedDate)   // ✅ oldest → newest
+                .Select(wl => new LockerWaitingListDto
+                {
+                    StudentId = wl.StudentId,
+                    AppliedDate = wl.AppliedDate,
+                    SchoolName = wl.School.SchoolName,
+                    SchoolId = wl.SchoolId,
+                    GradeId = wl.GradeId,
+                    GradeName = wl.Grade.GradeName,
+                    CurrentYear = wl.CurrentYear ?? false,
+                    FollowingYear = wl.FollowingYear ?? false
+                })
+                .ToListAsync();
+
+            return Ok(items);
         }
 
         private bool WaitingListItemExists(int id) =>

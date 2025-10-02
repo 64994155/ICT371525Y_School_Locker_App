@@ -315,7 +315,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 AdminName = model.AdminName,
                 SchoolId = model.SchoolId,
                 StudentSchoolNumber = model.StudentSchoolNumber,
-                FoundStudent = student,  
+                FoundStudent = student,
                 ShowStudentSection = true,
                 GradeFilter = "All"
             };
@@ -333,6 +333,234 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View("Index", vm);
         }
 
+        //admin filter calls
+        //[HttpGet("Assigned/{studentId}")]
+        //public async Task<IActionResult> GetAssigned(int studentId)
+        //{
+        //    var lockers = await _context.Lockers
+        //        .Where(l => l.StudentId == studentId && l.IsAssigned == true)
+        //        .ToListAsync();
+        //    return Ok(lockers);
+        //}
+
+        //[HttpGet("Waiting/{studentId}")]
+        //public async Task<IActionResult> GetWaiting(int studentId)
+        //{
+        //    var waiting = await _context.LockerWaitingLists
+        //        .Include(w => w.Grade)
+        //        .Include(w => w.School)
+        //        .Where(w => w.StudentId == studentId && w.Status == true)
+        //        .OrderBy(w => w.AppliedDate)
+        //        .ToListAsync();
+        //    return Ok(waiting);
+        //}
+
+        //[HttpGet("Unassigned/{studentId}")]
+        //public async Task<IActionResult> GetUnassigned(int studentId)
+        //{
+        //    // Check if student has ANY assigned or waiting list entries first
+        //    var hasAssigned = await _context.Lockers.AnyAsync(l => l.StudentId == studentId && l.IsAssigned == true);
+        //    var hasWaiting = await _context.LockerWaitingLists.AnyAsync(w => w.StudentId == studentId && w.Status == true);
+
+        //    if (hasAssigned || hasWaiting)
+        //        return Ok(new List<object>()); // empty list = not unassigned
+
+        //    // Otherwise, return available lockers
+        //    var student = await _context.Students.FindAsync(studentId);
+        //    var lockers = await _context.Lockers
+        //        .Where(l => l.SchoolId == student.SchoolId && l.GradeId == student.GradesId && !l.IsAssigned == true)
+        //        .ToListAsync();
+
+        //    return Ok(lockers);
+        //}
+
+        [HttpGet("All/{studentId}")]
+        public async Task<IActionResult> GetAll(int studentId)
+        {
+            // --- Assigned lockers ---
+            var assigned = await _context.Lockers
+                .Where(l => l.StudentId == studentId && l.IsAssigned == true)
+                .Select(l => new {
+                    l.LockerId,
+                    l.LockerNumber,
+                    l.IsAdminApproved,
+                    l.CurrentBookingYear,
+                    l.FollowingBookingYear,
+                    YearType = l.CurrentBookingYear == true ? "current" :
+                               l.FollowingBookingYear == true ? "following" : "unknown"
+                })
+                .ToListAsync();
+
+            // --- Waiting list entries ---
+            var waiting = await _context.LockerWaitingLists
+                .Include(w => w.Grade)
+                .Include(w => w.School)
+                .Where(w => w.StudentId == studentId && w.Status == true)
+                .OrderBy(w => w.AppliedDate)
+                .Select(w => new {
+                    w.SchoolId,
+                    SchoolName = w.School.SchoolName,
+                    w.GradeId,
+                    GradeName = w.Grade.GradeName,
+                    w.AppliedDate,
+                    YearType = w.CurrentYear == true ? "current" :
+                               (w.FollowingYear == true ? "following" : "unknown")
+                })
+                .ToListAsync();
+
+            // --- Unassigned by year (separated) ---
+            var student = await _context.Students.FindAsync(studentId);
+            var unassigned = new { current = new List<object>(), following = new List<object>() };
+
+            if (student != null)
+            {
+                // current year lockers (only if not already assigned/waiting for current)
+                var hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
+                var hasCurrentWaiting = waiting.Any(w => w.YearType == "current");
+
+                if (!hasCurrentAssigned && !hasCurrentWaiting)
+                {
+                    unassigned = new
+                    {
+                        current = await _context.Lockers
+                            .Where(l => l.SchoolId == student.SchoolId &&
+                                        l.GradeId == student.GradesId &&
+                                        (l.IsAssigned == null || l.IsAssigned == false))
+                            .Select(l => new {
+                                l.LockerId,
+                                l.LockerNumber
+                            })
+                            .ToListAsync<object>(),
+                        following = new List<object>() // placeholder, will populate below
+                    };
+                }
+
+                // following year lockers (only if not already assigned/waiting for following)
+                var hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
+                var hasFollowingWaiting = waiting.Any(w => w.YearType == "following");
+
+                if (!hasFollowingAssigned && !hasFollowingWaiting)
+                {
+                    var followingLockers = await _context.Lockers
+                        .Where(l => l.SchoolId == student.SchoolId &&
+                                    l.GradeId == student.GradesId &&
+                                    (l.IsAssigned == null || l.IsAssigned == false))
+                        .Select(l => new {
+                            l.LockerId,
+                            l.LockerNumber
+                        })
+                        .ToListAsync<object>();
+
+                    // merge following into existing `unassigned`
+                    unassigned = new
+                    {
+                        current = ((IEnumerable<object>)unassigned.current).ToList(),
+                        following = followingLockers
+                    };
+                }
+            }
+
+            return Ok(new { Assigned = assigned, Waiting = waiting, Unassigned = unassigned });
+        }
+
+        [HttpGet("AllByGrade/{schoolId}/{gradeId}")]
+        public async Task<IActionResult> GetAllByGrade(int schoolId, int gradeId)
+        {
+            var students = await _context.Students
+                .Where(s => s.SchoolId == schoolId && s.GradesId == gradeId)
+                .Select(s => s.StudentId)
+                .ToListAsync();
+
+            var result = new Dictionary<int, object>();
+
+            foreach (var studentId in students)
+            {
+                // Assigned
+                var assigned = await _context.Lockers
+                    .Where(l => l.StudentId == studentId && l.IsAssigned == true)
+                    .Select(l => new {
+                        l.LockerId,
+                        l.LockerNumber,
+                        l.IsAdminApproved,
+                        l.CurrentBookingYear,
+                        l.FollowingBookingYear,
+                        YearType = l.CurrentBookingYear == true ? "current" :
+                                   l.FollowingBookingYear == true ? "following" : "unknown"
+                    })
+                    .ToListAsync();
+
+                // Waiting
+                var waiting = await _context.LockerWaitingLists
+                    .Include(w => w.Grade)
+                    .Include(w => w.School)
+                    .Where(w => w.StudentId == studentId && w.Status == true)
+                    .OrderBy(w => w.AppliedDate)
+                    .Select(w => new {
+                        w.SchoolId,
+                        SchoolName = w.School.SchoolName,
+                        w.GradeId,
+                        GradeName = w.Grade.GradeName,
+                        w.AppliedDate,
+                        YearType = w.CurrentYear == true ? "current" :
+                                   (w.FollowingYear == true ? "following" : "unknown")
+                    })
+                    .ToListAsync();
+
+                var student = await _context.Students.FindAsync(studentId);
+                var unassigned = new { current = new List<object>(), following = new List<object>() };
+
+                if (student != null)
+                {
+                    // current year
+                    var hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
+                    var hasCurrentWaiting = waiting.Any(w => w.YearType == "current");
+
+                    if (!hasCurrentAssigned && !hasCurrentWaiting)
+                    {
+                        unassigned = new
+                        {
+                            current = await _context.Lockers
+                                .Where(l => l.SchoolId == student.SchoolId &&
+                                            l.GradeId == student.GradesId &&
+                                            (l.IsAssigned == null || l.IsAssigned == false))
+                                .Select(l => new {
+                                    l.LockerId,
+                                    l.LockerNumber
+                                })
+                                .ToListAsync<object>(),
+                            following = new List<object>() // placeholder
+                        };
+                    }
+
+                    // following year
+                    var hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
+                    var hasFollowingWaiting = waiting.Any(w => w.YearType == "following");
+
+                    if (!hasFollowingAssigned && !hasFollowingWaiting)
+                    {
+                        var followingLockers = await _context.Lockers
+                            .Where(l => l.SchoolId == student.SchoolId &&
+                                        l.GradeId == student.GradesId &&
+                                        (l.IsAssigned == null || l.IsAssigned == false))
+                            .Select(l => new {
+                                l.LockerId,
+                                l.LockerNumber
+                            })
+                            .ToListAsync<object>();
+
+                        unassigned = new
+                        {
+                            current = ((IEnumerable<object>)unassigned.current).ToList(),
+                            following = followingLockers
+                        };
+                    }
+                }
+
+                result[studentId] = new { Assigned = assigned, Waiting = waiting, Unassigned = unassigned };
+            }
+
+            return Ok(result);
+        }
     }
 }
 

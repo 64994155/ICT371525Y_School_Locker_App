@@ -119,9 +119,9 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 .ToListAsync();
 
             //Exam Testing : Uncomment for waiting list testing
-            return Ok(new List<LockerDto>());
+            //return Ok(new List<LockerDto>());
 
-            //return Ok(lockers);    
+            return Ok(lockers);    
 
         }
 
@@ -144,7 +144,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     message = "Locker allocations are closed for this year (after November 30)."
                 });
             }
-   
+
             var lockers = await _context.Lockers
                 .Include(l => l.School)
                 .Where(l => l.SchoolId == schoolId
@@ -158,6 +158,9 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     Location = l.School!.SchoolName
                 })
                 .ToListAsync();
+
+            //Exam Test: Uncomment to test waiting list
+            //return Ok(new List<LockerDto>());
 
             return Ok(lockers);
         }
