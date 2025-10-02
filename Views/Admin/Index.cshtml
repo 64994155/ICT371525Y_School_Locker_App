@@ -206,7 +206,16 @@
                     }
 
                     const container = document.getElementById(`locker-info-${parseInt(studentId)}`);
-                    if (container) container.innerHTML = html || `<p>No locker info.</p>`;
+                    if (container) {
+                        if (html) {
+                            container.innerHTML = html;
+                            container.closest(".card").style.display = "block"; // ✅ show card
+                        } else if (filter === "Unassigned") {
+                            container.closest(".card").style.display = "none";   // ✅ hide card if no unassigned
+                        } else {
+                            container.innerHTML = `<p>No locker info.</p>`;
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("Error loading grade lockers:", err);
@@ -223,13 +232,20 @@
 
                 switch (filter) {
                     case "Assigned":
-                        html = renderAssigned(studentData.assigned, studentId);
+                        if (studentData.assigned?.length) {
+                            html = renderAssigned(studentData.assigned, studentId);
+                        }
                         break;
                     case "Waiting":
-                        html = renderWaiting(studentData.waiting, studentId);
+                        if (studentData.waiting?.length) {
+                            html = renderWaiting(studentData.waiting, studentId);
+                        }
                         break;
                     case "Unassigned":
-                        html = renderUnassigned(studentData.unassigned, studentId);
+                        if (studentData.unassigned &&
+                            (studentData.unassigned.current?.length || studentData.unassigned.following?.length)) {
+                            html = renderUnassigned(studentData.unassigned, studentId);
+                        }
                         break;
                     case "All":
                     default:
@@ -242,6 +258,9 @@
                             html += renderUnassigned(studentData.unassigned, studentId);
                         break;
                 }
+
+                // 🚩 Skip rendering card if filter=Unassigned and no unassigned values
+                if (filter === "Unassigned" && !html) return;
 
                 const container = document.getElementById(`locker-info-${studentId}`);
                 if (container) container.innerHTML = html || `<p>No locker info.</p>`;
@@ -280,12 +299,11 @@
             return html;
         }
 
-                function renderUnassigned(unassigned, studentId) {
-            if (!unassigned) return "";
+        function renderUnassigned(unassigned, studentId) {
+            if (!unassigned) return ""; // nothing available at all
 
             let html = `<h6>Available Lockers</h6>`;
 
-            // --- Current Year ---
             if (unassigned.current && unassigned.current.length) {
                 html += `<h6 class="mt-2">Current Year</h6>
                          <table class="table table-bordered">
@@ -305,7 +323,6 @@
                 html += `</tbody></table>`;
             }
 
-            // --- Following Year ---
             if (unassigned.following && unassigned.following.length) {
                 html += `<h6 class="mt-2">Following Year</h6>
                          <table class="table table-bordered">
