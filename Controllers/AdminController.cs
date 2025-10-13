@@ -340,47 +340,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View("Index", vm);
         }
 
-        //admin filter calls
-        //[HttpGet("Assigned/{studentId}")]
-        //public async Task<IActionResult> GetAssigned(int studentId)
-        //{
-        //    var lockers = await _context.Lockers
-        //        .Where(l => l.StudentId == studentId && l.IsAssigned == true)
-        //        .ToListAsync();
-        //    return Ok(lockers);
-        //}
-
-        //[HttpGet("Waiting/{studentId}")]
-        //public async Task<IActionResult> GetWaiting(int studentId)
-        //{
-        //    var waiting = await _context.LockerWaitingLists
-        //        .Include(w => w.Grade)
-        //        .Include(w => w.School)
-        //        .Where(w => w.StudentId == studentId && w.Status == true)
-        //        .OrderBy(w => w.AppliedDate)
-        //        .ToListAsync();
-        //    return Ok(waiting);
-        //}
-
-        //[HttpGet("Unassigned/{studentId}")]
-        //public async Task<IActionResult> GetUnassigned(int studentId)
-        //{
-        //    // Check if student has ANY assigned or waiting list entries first
-        //    var hasAssigned = await _context.Lockers.AnyAsync(l => l.StudentId == studentId && l.IsAssigned == true);
-        //    var hasWaiting = await _context.LockerWaitingLists.AnyAsync(w => w.StudentId == studentId && w.Status == true);
-
-        //    if (hasAssigned || hasWaiting)
-        //        return Ok(new List<object>()); // empty list = not unassigned
-
-        //    // Otherwise, return available lockers
-        //    var student = await _context.Students.FindAsync(studentId);
-        //    var lockers = await _context.Lockers
-        //        .Where(l => l.SchoolId == student.SchoolId && l.GradeId == student.GradesId && !l.IsAssigned == true)
-        //        .ToListAsync();
-
-        //    return Ok(lockers);
-        //}
-
         [HttpGet("All/{studentId}")]
         public async Task<IActionResult> GetAll(int studentId)
         {

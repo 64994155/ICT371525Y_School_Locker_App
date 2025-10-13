@@ -277,17 +277,17 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto.YearType?.ToLower() == "current")
             {
                 locker.CurrentBookingYear = true;
-                locker.IsAdminApprovedCurrentBookingYear = true;
+                locker.IsAdminApprovedCurrentBookingYear = false;
                 locker.StudentIdCurrentBookingYear = dto.StudentID;
-                locker.AssignedDate = new DateTime();
+                locker.AssignedDate = DateTime.Now;
 
             }
             else if (dto.YearType?.ToLower() == "following")
             {
                 locker.FollowingBookingYear = true;
-                locker.IsAdminApprovedFollowingBookingYear = true;
+                locker.IsAdminApprovedFollowingBookingYear = false;
                 locker.StudentIdFollowingBookingYear = dto.StudentID; ;
-                locker.AssignedDate = new DateTime();
+                locker.AssignedDate = DateTime.Now;
             }
 
             try

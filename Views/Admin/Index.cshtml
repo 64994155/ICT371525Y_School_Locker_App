@@ -286,7 +286,7 @@
                             <p><strong>Year:</strong> ${l.yearType}</p>
                             <p><strong>Approved:</strong> ${l.isAdminApproved ? "✅" : "❌"}</p>
                             <button class="btn btn-sm btn-danger" onclick="cancelLocker(${l.lockerId}, ${studentId}, '${l.yearType}')">Cancel</button>
-                            ${!l.isAdminApproved ? `<button class="btn btn-sm btn-success ms-2" onclick="approveLocker(${l.lockerId}, ${studentId})">Approve</button>` : ``}
+                            ${!l.isAdminApproved ? `<button class="btn btn-sm btn-success ms-2" onclick="approveLocker(${l.lockerId}, ${studentId}, '${l.yearType}')">Approve</button>` : ``}
                          </div>`;
             });
             return html;
@@ -365,8 +365,8 @@
             await fetch(`${window.baseUrl}/Locker/UnassignLocker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lockerId,studentId,yearType})});
             refreshSearch(studentId);
         }
-        async function approveLocker(lockerId,studentId){
-            await fetch(`${window.baseUrl}/Admin/ApproveLocker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lockerId})});
+        async function approveLocker(lockerId,studentId,yearType){
+            await fetch(`${window.baseUrl}/Admin/ApproveLocker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lockerId,studentId,yearType})});
             refreshSearch(studentId);
         }
         async function cancelWaitingList(studentId,schoolId,gradeId,yearType){

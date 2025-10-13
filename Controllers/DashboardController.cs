@@ -19,65 +19,97 @@ namespace ICT371525Y_School_Locker_App.Controllers
         [HttpGet("index")]
         public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, int? gradeId, bool? isAdminApproved)
         {
-            //var from = startDate ?? new DateTime(DateTime.Now.Year, 1, 1);
-            //var to = endDate ?? new DateTime(DateTime.Now.Year, 12, 31);
+            var from = startDate ?? new DateTime(DateTime.Now.Year, 1, 1);
+            var to = endDate ?? new DateTime(DateTime.Now.Year, 12, 31);
 
-            //var lockerUsageQuery = _context.Parents
-            //    .Join(_context.Students,
-            //          parent => parent.ParentId,
-            //          student => student.ParentId,
-            //          (parent, student) => new { parent, student })
-            //    .Join(_context.Grades,
-            //          ps => ps.student.GradesId,
-            //          grade => grade.GradesId,
-            //          (ps, grade) => new { ps.parent, ps.student, grade })
-            //    .Join(_context.Lockers,
-            //          psg => psg.student.StudentId,
-            //          locker => locker.StudentId,
-            //          (psg, locker) => new LockerUsageDetail
-            //          {
-            //              ParentEmail = psg.parent.ParentEmail,
-            //              StudentSchoolNumber = psg.student.StudentSchoolNumber,
-            //              GradeNumber = psg.grade.GradeNumber.ToString(),
-            //              LockerNumber = locker.LockerNumber,
-            //              IsAssigned = locker.IsAssigned == true,
-            //              IsAdminApproved = locker.IsAdminApproved == true,
-            //              AssignedDate = locker.AssignedDate
-            //          })
-            //    .Where(x => x.IsAssigned) 
-            //    .Where(x => x.AssignedDate >= from && x.AssignedDate <= to);
+            // Join Parents → Students → Grades → Lockers
+            var lockerUsageQuery =
+                from parent in _context.Parents
+                join student in _context.Students on parent.ParentId equals student.ParentId
+                join grade in _context.Grades on student.GradesId equals grade.GradesId
+                join locker in _context.Lockers on student.StudentId equals locker.StudentIdCurrentBookingYear into lockerCurrent
+                from lc in lockerCurrent.DefaultIfEmpty()
+                join locker2 in _context.Lockers on student.StudentId equals locker2.StudentIdFollowingBookingYear into lockerFollowing
+                from lf in lockerFollowing.DefaultIfEmpty()
+                select new
+                {
+                    parent.ParentEmail,
+                    student.StudentSchoolNumber,
+                    GradeNumber = grade.GradeNumber,
+                    CurrentLocker = lc,
+                    FollowingLocker = lf
+                };
 
-            //if (gradeId.HasValue)
-            //{
-            //    lockerUsageQuery = lockerUsageQuery.Where(x => x.GradeNumber == gradeId.Value.ToString());
-            //}
+            // Flatten into usage details
+            var usageDetails = lockerUsageQuery
+                .AsEnumerable()
+                .SelectMany(x =>
+                {
+                    var list = new List<LockerUsageDetail>();
 
-            //if (isAdminApproved.HasValue)
-            //{
-            //    lockerUsageQuery = lockerUsageQuery.Where(x => x.IsAdminApproved == isAdminApproved.Value);
-            //}
+                    if (x.CurrentLocker != null && x.CurrentLocker.CurrentBookingYear == true)
+                    {
+                        list.Add(new LockerUsageDetail
+                        {
+                            ParentEmail = x.ParentEmail,
+                            StudentSchoolNumber = x.StudentSchoolNumber,
+                            GradeNumber = x.GradeNumber.ToString(),
+                            LockerNumber = x.CurrentLocker.LockerNumber,
+                            IsAssigned = true,
+                            IsAdminApproved = x.CurrentLocker.IsAdminApprovedCurrentBookingYear ?? false,
+                            AssignedDate = x.CurrentLocker.AssignedDate
+                        });
+                    }
 
-            //var lockerUsageResults = await lockerUsageQuery.Take(200).ToListAsync();
+                    if (x.FollowingLocker != null && x.FollowingLocker.FollowingBookingYear == true)
+                    {
+                        list.Add(new LockerUsageDetail
+                        {
+                            ParentEmail = x.ParentEmail,
+                            StudentSchoolNumber = x.StudentSchoolNumber,
+                            GradeNumber = x.GradeNumber.ToString(),
+                            LockerNumber = x.FollowingLocker.LockerNumber,
+                            IsAssigned = true,
+                            IsAdminApproved = x.FollowingLocker.IsAdminApprovedFollowingBookingYear,
+                            AssignedDate = x.FollowingLocker.AssignedDate
+                        });
+                    }
 
-            //var lockerByGrade = lockerUsageResults
-            //    .GroupBy(x => x.GradeNumber)
-            //    .Select(g => new GradeCount
-            //    {
-            //        Grade = g.Key,
-            //        Count = g.Count()
-            //    })
-            //    .ToList();
+                    return list;
+                })
+                .Where(x => x.IsAssigned && x.AssignedDate >= from && x.AssignedDate <= to);
 
-            //var model = new LockerDashboardViewModel
-            //{
-            //    LockerUsageGrade8and11 = lockerUsageResults,
-            //    LockerByGrade = lockerByGrade,
-            //    LockersBookedJanToJun = lockerUsageResults.Count
-            //};
+            // Apply filters
+            if (gradeId.HasValue)
+            {
+                usageDetails = usageDetails.Where(x => x.GradeNumber == gradeId.Value.ToString());
+            }
+            if (isAdminApproved.HasValue)
+            {
+                usageDetails = usageDetails.Where(x => x.IsAdminApproved == isAdminApproved.Value);
+            }
 
-            //return View(model);
+            var lockerUsageResults = usageDetails.Take(200).ToList();
 
-            return View(new LockerDashboardViewModel());
+            // Group by Grade for chart
+            var lockerByGrade = lockerUsageResults
+                .GroupBy(x => x.GradeNumber)
+                .Select(g => new GradeCount
+                {
+                    Grade = g.Key,
+                    Count = g.Count()
+                })
+                .ToList();
+
+            var model = new LockerDashboardViewModel
+            {
+                LockerUsageGrade8and11 = lockerUsageResults,
+                LockerByGrade = lockerByGrade,
+                LockersBookedJanToJun = lockerUsageResults.Count
+            };
+
+            return View(model);
+        
         }
     }
 }
