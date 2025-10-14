@@ -242,25 +242,11 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto.LockerId <= 0 || dto.StudentID <= 0)
                 return BadRequest("Invalid locker or student ID.");
 
-            Locker locker;
-
-            if (dto.YearType == "current")
-            {
-                locker = await _context.Lockers
-                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
-            }
-            else if (dto.YearType == "following")
-            {
-                locker = await _context.Lockers
-                    .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
-            }
-            else
-            {
-                return NotFound("Invalid year type specified.");
-            }
+            var locker = await _context.Lockers
+                .FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
 
             if (locker == null)
-                return NotFound("Locker already assigned or does not exist.");
+                return NotFound("Locker not found or already assigned.");
 
             var student = await _context.Students
                 .Include(s => s.Parent)
@@ -273,34 +259,61 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (string.IsNullOrEmpty(student.Parent?.ParentEmail))
                 return BadRequest("Parent email not available.");
 
+            // --- Assign locker ---
+            DateTime assignedDate = DateTime.Now;
+            string formattedDate = string.Empty;
+            string bookingYearLabel = dto.YearType?.ToUpper() ?? "CURRENT";
 
             if (dto.YearType?.ToLower() == "current")
             {
                 locker.CurrentBookingYear = true;
                 locker.IsAdminApprovedCurrentBookingYear = false;
                 locker.StudentIdCurrentBookingYear = dto.StudentID;
-                locker.AssignedDate = DateTime.Now;
+                locker.AssignedDate = assignedDate;
 
+                formattedDate = assignedDate.ToString("dd MMM yyyy");
             }
             else if (dto.YearType?.ToLower() == "following")
             {
                 locker.FollowingBookingYear = true;
                 locker.IsAdminApprovedFollowingBookingYear = false;
-                locker.StudentIdFollowingBookingYear = dto.StudentID; ;
-                locker.AssignedDate = DateTime.Now;
+                locker.StudentIdFollowingBookingYear = dto.StudentID;
+                locker.AssignedDate = assignedDate;
+
+                formattedDate = assignedDate.AddYears(1).ToString("dd MMM yyyy");
+            }
+            else
+            {
+                return BadRequest("Invalid year type specified.");
             }
 
             try
             {
                 await _context.SaveChangesAsync();
 
+                // --- Build email message ---
+                string emailBody = $@"
+                    Dear Parent,
+                    
+                    Locker {locker.LockerNumber} has been assigned to {student.StudentName}
+                    for the {bookingYearLabel} booking year ({formattedDate}).
+                    
+                    Please reply with proof of payment for the R100 usage fee.
+
+                    Kindly note, Failure to pay fee within 30 days of this application 
+                    will result in locker deallocation.
+                    
+                    Kind regards,
+                    School Locker Administration
+                    ";
+
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
                     "Locker Assignment Confirmation",
-                    $"Dear Parent,\n\nLocker {locker.LockerNumber} has been assigned to {student.StudentName} for the {dto.YearType} booking year."
+                    emailBody
                 );
 
-                return Ok("Locker assigned successfully with the correct booking year.");
+                return Ok("Locker assigned successfully and confirmation email sent.");
             }
             catch (DbUpdateConcurrencyException)
             {
