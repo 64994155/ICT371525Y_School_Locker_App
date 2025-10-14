@@ -156,7 +156,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 locker.IsAdminApprovedFollowingBookingYear = true;
             }
-      
+
             await _context.SaveChangesAsync();
 
             var student = await _context.Students
@@ -358,34 +358,56 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (student == null)
                 return NotFound("Student not found.");
 
+            bool isFinalGrade = student.GradesId == 24;
+
             // --- Assigned lockers
-            var assigned = await _context.Lockers
+            var lockers = await _context.Lockers
                 .Where(l =>
                     (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
                     (l.StudentIdFollowingBookingYear == studentId && l.FollowingBookingYear == true)
                 )
-                .Select(l => new
-                {
-                    l.LockerId,
-                    l.LockerNumber,
-                    l.CurrentBookingYear,
-                    l.FollowingBookingYear,
-                    l.IsAdminApprovedCurrentBookingYear,
-                    l.IsAdminApprovedFollowingBookingYear,
-                    YearType = l.CurrentBookingYear == true ? "current" :
-                               (l.FollowingBookingYear == true ? "following" : "unknown"),
-                    // ✅ Unified approval flag
-                    IsAdminApproved = l.CurrentBookingYear == true
-                        ? l.IsAdminApprovedCurrentBookingYear
-                        : l.IsAdminApprovedFollowingBookingYear
-                })
                 .ToListAsync();
 
+            var assigned = new List<object>();
+
+            foreach (var l in lockers)
+            {
+                if (l.CurrentBookingYear == true && l.StudentIdCurrentBookingYear == studentId)
+                {
+                    assigned.Add(new
+                    {
+                        l.LockerId,
+                        l.LockerNumber,
+                        YearType = "current",
+                        IsAdminApproved = l.IsAdminApprovedCurrentBookingYear
+                    });
+                }
+
+                if (!isFinalGrade && l.FollowingBookingYear == true && l.StudentIdFollowingBookingYear == studentId)
+                {
+                    assigned.Add(new
+                    {
+                        l.LockerId,
+                        l.LockerNumber,
+                        YearType = "following",
+                        IsAdminApproved = l.IsAdminApprovedFollowingBookingYear
+                    });
+                }
+            }
+
             // --- Waiting list
-            var waiting = await _context.LockerWaitingLists
+            var waitingQuery = _context.LockerWaitingLists
                 .Include(w => w.Grade)
                 .Include(w => w.School)
-                .Where(w => w.StudentId == studentId && w.Status == true)
+                .Where(w => w.StudentId == studentId && w.Status == true);
+
+            if (isFinalGrade)
+            {
+                // ❌ Exclude following-year waiting list for Grade 24
+                waitingQuery = waitingQuery.Where(w => w.CurrentYear == true);
+            }
+
+            var waiting = await waitingQuery
                 .OrderBy(w => w.AppliedDate)
                 .Select(w => new
                 {
@@ -399,14 +421,21 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToListAsync();
 
-            // --- Unassigned (available lockers)
+            // --- Flags
+            bool hasCurrentAssigned = assigned.Any(a =>
+                a.GetType().GetProperty("YearType")?.GetValue(a)?.ToString() == "current");
+
+            bool hasFollowingAssigned = !isFinalGrade && assigned.Any(a =>
+                a.GetType().GetProperty("YearType")?.GetValue(a)?.ToString() == "following");
+
+            bool onCurrentWaiting = waiting.Any(w => w.YearType == "current");
+            bool onFollowingWaiting = !isFinalGrade && waiting.Any(w => w.YearType == "following");
+
+            // --- Unassigned lockers
             var currentAvailable = new List<object>();
             var followingAvailable = new List<object>();
 
-            // ✅ Only block if student ALREADY has an assigned locker, 
-            // but DO NOT block if they are only on the waiting list.
-            bool hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
-            if (!hasCurrentAssigned)
+            if (!hasCurrentAssigned && !onCurrentWaiting)
             {
                 currentAvailable = await _context.Lockers
                     .Where(l =>
@@ -417,8 +446,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     .ToListAsync<object>();
             }
 
-            bool hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
-            if (!hasFollowingAssigned)
+            // ❌ Only include following-year lockers if not final grade
+            if (!isFinalGrade && !hasFollowingAssigned && !onFollowingWaiting)
             {
                 followingAvailable = await _context.Lockers
                     .Where(l =>
@@ -429,14 +458,27 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     .ToListAsync<object>();
             }
 
+            var gradeId = student.GradesId;
+
+            //Exam: uncomment to test waiting list
+            //currentAvailable = new List<object>();
+            //followingAvailable = new List<object>();
+
+
             return Ok(new
             {
                 student.StudentId,
                 student.StudentName,
                 student.StudentSchoolNumber,
+                gradeId,
+                student.SchoolId,
                 assigned,
                 waiting,
-                unassigned = new { current = currentAvailable, following = followingAvailable }
+                unassigned = new
+                {
+                    current = currentAvailable,
+                    following = followingAvailable
+                }
             });
         }
 
@@ -460,35 +502,55 @@ namespace ICT371525Y_School_Locker_App.Controllers
             foreach (var student in students)
             {
                 int studentId = student.StudentId;
+                bool isFinalGrade = student.GradesId == 24;
 
                 // --- Assigned lockers
-                var assigned = await _context.Lockers
+                var lockers = await _context.Lockers
                     .Where(l =>
                         (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
                         (l.StudentIdFollowingBookingYear == studentId && l.FollowingBookingYear == true)
                     )
-                    .Select(l => new
-                    {
-                        l.LockerId,
-                        l.LockerNumber,
-                        l.CurrentBookingYear,
-                        l.FollowingBookingYear,
-                        l.IsAdminApprovedCurrentBookingYear,
-                        l.IsAdminApprovedFollowingBookingYear,
-                        YearType = l.CurrentBookingYear == true ? "current" :
-                                   (l.FollowingBookingYear == true ? "following" : "unknown"),
-                        // ✅ Unified approval flag
-                        IsAdminApproved = l.CurrentBookingYear == true
-                            ? l.IsAdminApprovedCurrentBookingYear
-                            : l.IsAdminApprovedFollowingBookingYear
-                    })
                     .ToListAsync();
 
+                var assigned = new List<object>();
+
+                foreach (var l in lockers)
+                {
+                    if (l.CurrentBookingYear == true && l.StudentIdCurrentBookingYear == studentId)
+                    {
+                        assigned.Add(new
+                        {
+                            l.LockerId,
+                            l.LockerNumber,
+                            YearType = "current",
+                            IsAdminApproved = l.IsAdminApprovedCurrentBookingYear
+                        });
+                    }
+
+                    if (!isFinalGrade && l.FollowingBookingYear == true && l.StudentIdFollowingBookingYear == studentId)
+                    {
+                        assigned.Add(new
+                        {
+                            l.LockerId,
+                            l.LockerNumber,
+                            YearType = "following",
+                            IsAdminApproved = l.IsAdminApprovedFollowingBookingYear
+                        });
+                    }
+                }
+
                 // --- Waiting list
-                var waiting = await _context.LockerWaitingLists
+                var waitingQuery = _context.LockerWaitingLists
                     .Include(w => w.Grade)
                     .Include(w => w.School)
-                    .Where(w => w.StudentId == studentId && w.Status == true)
+                    .Where(w => w.StudentId == studentId && w.Status == true);
+
+                if (isFinalGrade)
+                {
+                    waitingQuery = waitingQuery.Where(w => w.CurrentYear == true);
+                }
+
+                var waiting = await waitingQuery
                     .OrderBy(w => w.AppliedDate)
                     .Select(w => new
                     {
@@ -502,27 +564,33 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     })
                     .ToListAsync();
 
-                // --- Unassigned logic (fixed) ---
+                bool hasCurrentAssigned = assigned.Any(a =>
+                    a.GetType().GetProperty("YearType")?.GetValue(a)?.ToString() == "current");
+
+                bool hasFollowingAssigned = !isFinalGrade && assigned.Any(a =>
+                    a.GetType().GetProperty("YearType")?.GetValue(a)?.ToString() == "following");
+
+                bool onCurrentWaiting = waiting.Any(w => w.YearType == "current");
+                bool onFollowingWaiting = !isFinalGrade && waiting.Any(w => w.YearType == "following");
+
                 var currentAvailable = new List<object>();
                 var followingAvailable = new List<object>();
+                var allCurrentAvailable = new List<object>();
+                var allFollowingAvailable = new List<object>();
 
-                // Only block if already assigned (NOT if waiting)
-                bool hasCurrentAssigned = assigned.Any(a => a.CurrentBookingYear == true);
-                if (!hasCurrentAssigned)
-                {
-                    currentAvailable = await _context.Lockers
-                        .Where(l =>
-                            l.SchoolId == student.SchoolId &&
-                            l.GradeId == student.GradesId &&
-                            (l.CurrentBookingYear == null || l.CurrentBookingYear == false))
-                        .Select(l => new { l.LockerId, l.LockerNumber })
-                        .ToListAsync<object>();
-                }
+                // Always fetch current-year lockers
+                allCurrentAvailable = await _context.Lockers
+                    .Where(l =>
+                        l.SchoolId == student.SchoolId &&
+                        l.GradeId == student.GradesId &&
+                        (l.CurrentBookingYear == null || l.CurrentBookingYear == false))
+                    .Select(l => new { l.LockerId, l.LockerNumber })
+                    .ToListAsync<object>();
 
-                bool hasFollowingAssigned = assigned.Any(a => a.FollowingBookingYear == true);
-                if (!hasFollowingAssigned)
+                // Only fetch following-year lockers if not final grade
+                if (!isFinalGrade)
                 {
-                    followingAvailable = await _context.Lockers
+                    allFollowingAvailable = await _context.Lockers
                         .Where(l =>
                             l.SchoolId == student.SchoolId &&
                             l.GradeId == student.GradesId &&
@@ -531,7 +599,12 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         .ToListAsync<object>();
                 }
 
-                // --- earliest waiting applied date for ordering
+                if (!hasCurrentAssigned && !onCurrentWaiting)
+                    currentAvailable = allCurrentAvailable;
+
+                if (!isFinalGrade && !hasFollowingAssigned && !onFollowingWaiting)
+                    followingAvailable = allFollowingAvailable;
+
                 DateTime? earliestAppliedDate = waiting.Any()
                     ? waiting.Min(w => w.AppliedDate)
                     : (DateTime?)null;
@@ -541,14 +614,21 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     student.StudentId,
                     student.StudentName,
                     student.StudentSchoolNumber,
+                    gradeId,
+                    schoolId,
                     assigned,
                     waiting,
-                    unassigned = new { current = currentAvailable, following = followingAvailable },
+                    unassigned = new
+                    {
+                        current = currentAvailable,
+                        following = followingAvailable,
+                        allCurrent = allCurrentAvailable,
+                        allFollowing = allFollowingAvailable
+                    },
                     EarliestAppliedDate = earliestAppliedDate
                 });
             }
 
-            // --- Order students by earliest waiting date
             var orderedResult = result
                 .OrderBy(r => ((DateTime?)r.GetType().GetProperty("EarliestAppliedDate").GetValue(r)) ?? DateTime.MaxValue)
                 .ToDictionary(
@@ -558,6 +638,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         StudentId = r.GetType().GetProperty("StudentId").GetValue(r),
                         StudentName = r.GetType().GetProperty("StudentName").GetValue(r),
                         StudentSchoolNumber = r.GetType().GetProperty("StudentSchoolNumber").GetValue(r),
+                        gradeId = r.GetType().GetProperty("gradeId").GetValue(r),
+                        schoolId = r.GetType().GetProperty("schoolId").GetValue(r),
                         assigned = r.GetType().GetProperty("assigned").GetValue(r),
                         waiting = r.GetType().GetProperty("waiting").GetValue(r),
                         unassigned = r.GetType().GetProperty("unassigned").GetValue(r)

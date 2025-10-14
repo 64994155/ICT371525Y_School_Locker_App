@@ -433,6 +433,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     l.IsAdminApprovedCurrentBookingYear,
                     l.IsAdminApprovedFollowingBookingYear,
                     l.CurrentBookingYear,
+                    l.StudentIdCurrentBookingYear,
+                    l.StudentIdFollowingBookingYear,
                     l.FollowingBookingYear
                 })
                 .ToListAsync();
@@ -441,7 +443,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 var list = new List<AssignedLockerDto>();
 
-                if (l.CurrentBookingYear == true)
+                if (l.CurrentBookingYear == true && l.StudentIdCurrentBookingYear == studentId)
                 {
                     list.Add(new AssignedLockerDto
                     {
@@ -456,7 +458,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     });
                 }
 
-                if (l.FollowingBookingYear == true)
+                if (l.FollowingBookingYear == true && l.StudentIdFollowingBookingYear == studentId)
                 {
                     list.Add(new AssignedLockerDto
                     {
