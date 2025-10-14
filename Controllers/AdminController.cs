@@ -403,7 +403,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             if (isFinalGrade)
             {
-                // ❌ Exclude following-year waiting list for Grade 24
                 waitingQuery = waitingQuery.Where(w => w.CurrentYear == true);
             }
 
@@ -431,25 +430,19 @@ namespace ICT371525Y_School_Locker_App.Controllers
             bool onCurrentWaiting = waiting.Any(w => w.YearType == "current");
             bool onFollowingWaiting = !isFinalGrade && waiting.Any(w => w.YearType == "following");
 
-            // --- Unassigned lockers
-            var currentAvailable = new List<object>();
-            var followingAvailable = new List<object>();
+            // --- Fetch ALL available lockers first
+            var allCurrentAvailable = await _context.Lockers
+                .Where(l =>
+                    l.SchoolId == student.SchoolId &&
+                    l.GradeId == student.GradesId &&
+                    (l.CurrentBookingYear == null || l.CurrentBookingYear == false))
+                .Select(l => new { l.LockerId, l.LockerNumber })
+                .ToListAsync<object>();
 
-            if (!hasCurrentAssigned && !onCurrentWaiting)
+            var allFollowingAvailable = new List<object>();
+            if (!isFinalGrade)
             {
-                currentAvailable = await _context.Lockers
-                    .Where(l =>
-                        l.SchoolId == student.SchoolId &&
-                        l.GradeId == student.GradesId &&
-                        (l.CurrentBookingYear == null || l.CurrentBookingYear == false))
-                    .Select(l => new { l.LockerId, l.LockerNumber })
-                    .ToListAsync<object>();
-            }
-
-            // ❌ Only include following-year lockers if not final grade
-            if (!isFinalGrade && !hasFollowingAssigned && !onFollowingWaiting)
-            {
-                followingAvailable = await _context.Lockers
+                allFollowingAvailable = await _context.Lockers
                     .Where(l =>
                         l.SchoolId == student.SchoolId &&
                         l.GradeId == student.GradesId &&
@@ -458,12 +451,16 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     .ToListAsync<object>();
             }
 
+            // --- Visible unassigned for UI (hide if waiting)
+            var currentAvailable = (!hasCurrentAssigned && !onCurrentWaiting)
+                ? allCurrentAvailable
+                : new List<object>();
+
+            var followingAvailable = (!isFinalGrade && !hasFollowingAssigned && !onFollowingWaiting)
+                ? allFollowingAvailable
+                : new List<object>();
+
             var gradeId = student.GradesId;
-
-            //Exam: uncomment to test waiting list
-            //currentAvailable = new List<object>();
-            //followingAvailable = new List<object>();
-
 
             return Ok(new
             {
@@ -476,8 +473,13 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 waiting,
                 unassigned = new
                 {
+                    // for UI
                     current = currentAvailable,
-                    following = followingAvailable
+                    following = followingAvailable,
+
+                    // for waiting-list assignment
+                    allCurrent = allCurrentAvailable,
+                    allFollowing = allFollowingAvailable
                 }
             });
         }

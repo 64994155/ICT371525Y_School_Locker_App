@@ -442,25 +442,30 @@
             await fetch(`${window.baseUrl}/api/LockerWaitingList/Unassign`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({studentId,schoolId,gradeId,yearType})});
             refreshSearch(studentId);
         }
-        async function assignFromWaiting(studentId, yearType, schoolId, gradeId) {
+
+                async function assignFromWaiting(studentId, yearType, schoolId, gradeId) {
             try {
-                // pick the first available locker for that year
+                // Fetch the latest student data
                 const res = await fetch(`${window.baseUrl}/Admin/All/${studentId}`);
                 if (!res.ok) throw new Error(await res.text());
                 const studentData = await res.json();
 
+                // Use the full available lists (allCurrent / allFollowing)
                 let lockerList = yearType === "current"
-                    ? studentData.unassigned.current
-                    : studentData.unassigned.following;
+                    ? studentData.unassigned?.allCurrent
+                    : studentData.unassigned?.allFollowing;
 
+                // If no lockers found, show alert
                 if (!lockerList || !lockerList.length) {
                     alert("No lockers available for this year type.");
                     return;
                 }
 
-                const chosenLocker = lockerList[0]; // or build a dropdown if you want selection
+                // Pick the first available locker (could be replaced with a dropdown in future)
+                const chosenLocker = lockerList[0];
 
-                await fetch(`${window.baseUrl}/Locker/AdminAssignLocker`, {
+                // Assign the selected locker
+                const assignRes = await fetch(`${window.baseUrl}/Locker/AdminAssignLocker`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -470,9 +475,17 @@
                     })
                 });
 
+                if (!assignRes.ok) {
+                    const errText = await assignRes.text();
+                    throw new Error(errText || "Failed to assign locker.");
+                }
+
+                alert(`Locker ${chosenLocker.lockerNumber} assigned successfully for ${yearType} year.`);
                 refreshSearch(studentId);
+
             } catch (err) {
                 console.error("Error assigning from waiting list:", err);
+                alert("Error assigning from waiting list: " + err.message);
             }
         }
 
