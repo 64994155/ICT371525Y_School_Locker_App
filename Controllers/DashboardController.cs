@@ -1,5 +1,4 @@
-﻿
-using ICT371525Y_School_Locker_App.Data;
+﻿using ICT371525Y_School_Locker_App.Data;
 using ICT371525Y_School_Locker_App.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,10 +16,9 @@ namespace ICT371525Y_School_Locker_App.Controllers
         }
 
         [HttpGet("index")]
-        public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, int? gradeId, bool? isAdminApproved)
+        public async Task<IActionResult> Index(int? year, int? gradeId, bool? isAdminApproved)
         {
-            var from = startDate ?? new DateTime(DateTime.Now.Year, 1, 1);
-            var to = endDate ?? new DateTime(DateTime.Now.Year, 12, 31);
+            int selectedYear = year ?? DateTime.Now.Year;
 
             // Join Parents → Students → Grades → Lockers
             var lockerUsageQuery =
@@ -40,13 +38,14 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     FollowingLocker = lf
                 };
 
-            // Flatten into usage details
+            // Flatten and apply logic for current/following years
             var usageDetails = lockerUsageQuery
                 .AsEnumerable()
                 .SelectMany(x =>
                 {
                     var list = new List<LockerUsageDetail>();
 
+                    // 🔹 Current booking year (2025)
                     if (x.CurrentLocker != null && x.CurrentLocker.CurrentBookingYear == true)
                     {
                         list.Add(new LockerUsageDetail
@@ -57,10 +56,12 @@ namespace ICT371525Y_School_Locker_App.Controllers
                             LockerNumber = x.CurrentLocker.LockerNumber,
                             IsAssigned = true,
                             IsAdminApproved = x.CurrentLocker.IsAdminApprovedCurrentBookingYear ?? false,
-                            AssignedDate = x.CurrentLocker.AssignedDate
+                            AssignedDate = x.CurrentLocker.CurrentAssignedDate,
+                            BookingYear = 2025
                         });
                     }
 
+                    // 🔹 Following booking year (2026)
                     if (x.FollowingLocker != null && x.FollowingLocker.FollowingBookingYear == true)
                     {
                         list.Add(new LockerUsageDetail
@@ -71,27 +72,30 @@ namespace ICT371525Y_School_Locker_App.Controllers
                             LockerNumber = x.FollowingLocker.LockerNumber,
                             IsAssigned = true,
                             IsAdminApproved = x.FollowingLocker.IsAdminApprovedFollowingBookingYear,
-                            AssignedDate = x.FollowingLocker.AssignedDate
+                            AssignedDate = x.FollowingLocker.FollowingAssignedDate,
+                            BookingYear = 2026
                         });
                     }
 
                     return list;
                 })
-                .Where(x => x.IsAssigned && x.AssignedDate >= from && x.AssignedDate <= to);
+                .Where(x => x.BookingYear == selectedYear);
 
-            // Apply filters
-            if (gradeId.HasValue)
+            // ✅ Apply filters safely
+            if (gradeId.HasValue && gradeId.Value > 0)
             {
                 usageDetails = usageDetails.Where(x => x.GradeNumber == gradeId.Value.ToString());
             }
+
             if (isAdminApproved.HasValue)
             {
                 usageDetails = usageDetails.Where(x => x.IsAdminApproved == isAdminApproved.Value);
             }
 
-            var lockerUsageResults = usageDetails.Take(200).ToList();
+            // Convert to list
+            var lockerUsageResults = usageDetails.ToList();
 
-            // Group by Grade for chart
+            // Group by Grade
             var lockerByGrade = lockerUsageResults
                 .GroupBy(x => x.GradeNumber)
                 .Select(g => new GradeCount
@@ -101,6 +105,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToList();
 
+            // Build ViewModel
             var model = new LockerDashboardViewModel
             {
                 LockerUsageGrade8and11 = lockerUsageResults,
@@ -108,8 +113,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 LockersBookedJanToJun = lockerUsageResults.Count
             };
 
+            ViewBag.SelectedYear = selectedYear;
             return View(model);
-        
         }
     }
 }

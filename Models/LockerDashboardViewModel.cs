@@ -53,5 +53,6 @@
         public bool IsAdminApprovedFollowingBookingYear { get; set; }
         public bool? IsAdminApprovedCurrentBookingYear { get; set; }
         public DateTime? AssignedDate { get; set; }
-}
+        public int BookingYear { get; internal set; }
+    }
 }
