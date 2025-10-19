@@ -269,7 +269,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 locker.CurrentBookingYear = true;
                 locker.IsAdminApprovedCurrentBookingYear = false;
                 locker.StudentIdCurrentBookingYear = dto.StudentID;
-                locker.AssignedDate = assignedDate;
+                locker.CurrentAssignedDate = assignedDate;
 
                 formattedDate = assignedDate.ToString("dd MMM yyyy");
             }
@@ -278,7 +278,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 locker.FollowingBookingYear = true;
                 locker.IsAdminApprovedFollowingBookingYear = false;
                 locker.StudentIdFollowingBookingYear = dto.StudentID;
-                locker.AssignedDate = assignedDate;
+                locker.FollowingAssignedDate = assignedDate;
 
                 formattedDate = assignedDate.AddYears(1).ToString("dd MMM yyyy");
             }
@@ -384,14 +384,14 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 locker.CurrentBookingYear = true;
                 locker.IsAdminApprovedCurrentBookingYear = true;
                 locker.StudentIdCurrentBookingYear = dto.StudentID;
-                locker.AssignedDate = DateTime.Now;
+                locker.CurrentAssignedDate = DateTime.Now;
             }
             else if (isFollowingYear)
             {
                 locker.FollowingBookingYear = true;
                 locker.IsAdminApprovedFollowingBookingYear = true;
                 locker.StudentIdFollowingBookingYear = dto.StudentID;
-                locker.AssignedDate = DateTime.Now;
+                locker.FollowingAssignedDate = DateTime.Now;
             }
 
             try

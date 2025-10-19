@@ -29,6 +29,10 @@ public partial class Locker
 
     public bool IsAdminApprovedFollowingBookingYear { get; set; }
 
+    public DateTime? CurrentAssignedDate { get; set; }
+
+    public DateTime? FollowingAssignedDate { get; set; }
+
     public virtual Grade? Grade { get; set; }
 
     public virtual School? School { get; set; }

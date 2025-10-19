@@ -85,7 +85,9 @@ public partial class LockerAdminDbContext : DbContext
 
             entity.Property(e => e.LockerId).HasColumnName("LockerID");
             entity.Property(e => e.AssignedDate).HasColumnType("datetime");
+            entity.Property(e => e.CurrentAssignedDate).HasColumnType("datetime");
             entity.Property(e => e.CurrentBookingYear).HasDefaultValue(false);
+            entity.Property(e => e.FollowingAssignedDate).HasColumnType("datetime");
             entity.Property(e => e.FollowingBookingYear).HasDefaultValue(false);
             entity.Property(e => e.GradeId).HasColumnName("GradeID");
             entity.Property(e => e.LockerNumber)
