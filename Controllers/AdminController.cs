@@ -82,11 +82,13 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 .Where(s => s.ParentId == parent.ParentId)
                 .Select(s => new StudentDto
                 {
-                    StudentSchoolNumber = s.StudentSchoolNumber,
-                    StudentName = s.StudentName,
                     StudentId = s.StudentId,
+                    StudentName = s.StudentName,
+                    StudentSchoolNumber = s.StudentSchoolNumber,
                     GradesId = s.GradesId,
-                    SchoolId = s.SchoolId
+                    SchoolId = s.SchoolId,
+                    PaidCurrentYear = s.PaidCurrentYear ?? false,
+                    PaidFollowingYear = s.PaidFollowingYear ?? false
                 })
                 .ToListAsync();
 
@@ -112,6 +114,26 @@ namespace ICT371525Y_School_Locker_App.Controllers
                                }).ToListAsync();
 
             return View("Index", vm);
+        }
+
+        // ✅ New endpoint for updating payment status
+        [HttpPost("UpdatePaymentStatus")]
+        public async Task<IActionResult> UpdatePaymentStatus(int studentId, string yearType, bool paid)
+        {
+            var student = await _context.Students.FindAsync(studentId);
+            if (student == null)
+                return NotFound("Student not found.");
+
+            if (yearType.Equals("current", StringComparison.OrdinalIgnoreCase))
+                student.PaidCurrentYear = paid;
+            else if (yearType.Equals("following", StringComparison.OrdinalIgnoreCase))
+                student.PaidFollowingYear = paid;
+            else
+                return BadRequest("Invalid year type.");
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Payment status updated successfully." });
         }
 
         [HttpPost("AddStudent")]

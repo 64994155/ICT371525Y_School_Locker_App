@@ -12,5 +12,7 @@
         public bool HasCurrentYearLocker { get; set; }
         public bool HasFollowingYearLocker { get; set; }
         public bool IsOnWaitingList { get; set; }
+        public bool PaidCurrentYear { get; set; }
+        public bool PaidFollowingYear { get; set; }
     }
 }

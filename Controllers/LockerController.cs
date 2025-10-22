@@ -69,20 +69,25 @@ namespace ICT371525Y_School_Locker_App.Controllers
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailableLockers(int schoolId, int gradeId, string yearType)
         {
-            //Normal behaviour
+            //---Normal runtime behaviour ---
             var today = DateTime.Now;
 
-            //Possible Exam Testing: Simulate Nov Cut Off 
-            //var today = new DateTime(2025, 12, 5);   // Simulate after cutoff
+            // --- TESTING MODE 
+            //var today = new DateTime(2025, 11, 29);  // Before cutoff (should allow allocation)
+            //var today = new DateTime(2025, 12, 5);   // During cutoff (should block allocation)
+            //var today = new DateTime(2026, 1, 2);    // After cutoff (should allow allocation again)
 
-            var cutoffDate = new DateTime(today.Year, 11, 30, 23, 59, 59);
+            // Define cutoff range: from 30 November (inclusive) to 1 January (exclusive)
+            var cutoffStart = new DateTime(today.Year, 11, 30, 0, 0, 0); // 30 Nov
+            var cutoffEnd = new DateTime(today.Year + 1, 1, 1, 0, 0, 0); // 1 Jan next year
 
-            if (today > cutoffDate)
+            // If today's date falls between 30 Nov and 1 Jan, allocation is closed
+            if (today >= cutoffStart && today < cutoffEnd)
             {
                 return Ok(new
                 {
                     cutoffReached = true,
-                    message = "Locker allocations are closed for this year (after November 30)."
+                    message = "Locker allocations are closed between November 30 and January 1."
                 });
             }
 
@@ -118,11 +123,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToListAsync();
 
-            //Exam Testing : Uncomment for waiting list testing
-            //return Ok(new List<LockerDto>());
-
-            return Ok(lockers);    
-
+            return Ok(lockers);
         }
 
         [HttpGet("adminAvailable")]
