@@ -543,6 +543,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
         public async Task<IActionResult> GetAllByGrade(int schoolId, int gradeId)
         {
             var students = await _context.Students
+                .Include(s => s.Parent)
                 .Where(s => s.SchoolId == schoolId && s.GradesId == gradeId)
                 .Select(s => new
                 {
@@ -550,7 +551,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     s.StudentName,
                     s.StudentSchoolNumber,
                     s.SchoolId,
-                    s.GradesId
+                    s.GradesId,
+                    s.Parent.ParentIdnumber
                 })
                 .ToListAsync();
 
@@ -680,6 +682,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     student.StudentId,
                     student.StudentName,
                     student.StudentSchoolNumber,
+                    student.ParentIdnumber,
                     gradeId,
                     schoolId,
                     assigned,
@@ -704,6 +707,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                         StudentId = r.GetType().GetProperty("StudentId").GetValue(r),
                         StudentName = r.GetType().GetProperty("StudentName").GetValue(r),
                         StudentSchoolNumber = r.GetType().GetProperty("StudentSchoolNumber").GetValue(r),
+                        ParentIdNumber = r.GetType().GetProperty("ParentIdnumber").GetValue(r),
                         gradeId = r.GetType().GetProperty("gradeId").GetValue(r),
                         schoolId = r.GetType().GetProperty("schoolId").GetValue(r),
                         assigned = r.GetType().GetProperty("assigned").GetValue(r),

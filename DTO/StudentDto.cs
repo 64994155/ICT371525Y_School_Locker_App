@@ -14,5 +14,6 @@
         public bool IsOnWaitingList { get; set; }
         public bool PaidCurrentYear { get; set; }
         public bool PaidFollowingYear { get; set; }
+        public long? ParentID { get; set; }
     }
 }
