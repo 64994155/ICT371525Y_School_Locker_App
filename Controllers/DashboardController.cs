@@ -20,10 +20,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
         {
             int selectedYear = year ?? DateTime.Now.Year;
 
-            // store adminId for back button
             ViewBag.AdminId = adminId;
 
-            // Join Parents → Students → Grades → Lockers
             var lockerUsageQuery =
                 from parent in _context.Parents
                 join student in _context.Students on parent.ParentId equals student.ParentId

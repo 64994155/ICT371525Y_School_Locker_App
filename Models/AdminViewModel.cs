@@ -20,14 +20,13 @@ namespace ICT371525Y_School_Locker_App.DTO
         public List<StudentDto> AllocatedStudents { get; set; }
         public List<StudentDto> GradeStudents { get; set; }
 
-        // FIX: Change to SelectListItem for dropdown binding
         public IEnumerable<SelectListItem> Grades { get; set; }
 
         public bool ShowParentSection { get; set; }
         public bool ShowGradeSection { get; set; }
         public bool ShowStudentSection { get; set; }
 
-        public string SearchFilter { get; set; } // "all" or "waiting"
+        public string SearchFilter { get; set; } 
 
         public string GradeFilter { get; set; }
 

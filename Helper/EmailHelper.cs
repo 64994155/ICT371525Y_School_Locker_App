@@ -35,7 +35,8 @@ namespace ICT371525Y_School_Locker_App.Helper
             using var message = new MailMessage(fromAddress, toAddress)
             {
                 Subject = subject,
-                Body = body
+                Body = body,
+                IsBodyHtml = true
             };
             await smtp.SendMailAsync(message);
         }

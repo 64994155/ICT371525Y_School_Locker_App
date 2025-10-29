@@ -71,7 +71,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (dto == null || dto.StudentId <= 0)
                 return BadRequest("Invalid request.");
 
-            // If following year → bump grade
             if (dto.CurrentYear == false)
             {
                 dto.GradeId = await (
@@ -104,22 +103,36 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 await _context.SaveChangesAsync();
 
-                // ✅ Fetch student and grade for email
                 var student = await _context.Students
                     .Include(s => s.Parent)
                     .Include(s => s.Grades)
                     .FirstOrDefaultAsync(s => s.StudentId == dto.StudentId);
 
+                if (dto.CurrentYear == false)
+                {
+                    student.Grades.GradeNumber += 1;
+                }
+
                 if (student?.Parent?.ParentEmail != null)
                 {
                     await EmailHelper.SendEmailAsync(
                         student.Parent.ParentEmail,
-                        "Waiting List Placement",
-                        $"Dear Parent,\n\n{student.StudentName} has been added to the waiting list for Grade {student.Grades.GradeNumber}."
+                        "Waiting List Placement Confirmation",
+                        $@"
+                        <p>Dear Parent,</p>
+
+                        <p>We would like to inform you that <strong>{student.StudentName}</strong> has been successfully added to the 
+                        <strong>waiting list</strong> for <strong>Grade {student.Grades.GradeNumber}</strong>.</p>
+
+                        <p>As soon as a locker becomes available, we will notify you by email with further instructions.</p>
+
+                        <p>Thank you for your patience and understanding.</p>
+
+                        <p>Kind regards,<br/>
+                        <strong>School Locker Administration</strong></p>"
                     );
                 }
 
-                // ✅ Return flat response (no cycles)
                 return Ok(new
                 {
                     Message = "Waiting list assigned successfully.",
@@ -176,8 +189,20 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
-                    "Waiting List Cancellation",
-                    $"Dear Parent,\n\nThe waiting list request for {student.StudentName} has been canceled."
+                    "Waiting List Cancellation Notice",
+                    $@"
+                    <p>Dear Parent,</p>
+
+                    <p>We would like to inform you that the waiting list request for 
+                    <strong>{student.StudentName}</strong> has been <strong>cancelled</strong>.</p>
+
+                    <p>If this was done in error or you would like to reapply for a locker, 
+                    please contact the school administration for assistance.</p>
+
+                    <p>Thank you for your understanding.</p>
+
+                    <p>Kind regards,<br/>
+                    <strong>School Locker Administration</strong></p>"
                 );
             }
 
@@ -245,7 +270,7 @@ namespace ICT371525Y_School_Locker_App.Controllers
                               (checkFollowing && wl.FollowingYear == true)))
                 .Include(wl => wl.School)
                 .Include(wl => wl.Grade)
-                .OrderBy(wl => wl.AppliedDate)   // ✅ oldest → newest
+                .OrderBy(wl => wl.AppliedDate)   
                 .Select(wl => new LockerWaitingListDto
                 {
                     StudentId = wl.StudentId,

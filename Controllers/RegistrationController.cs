@@ -35,45 +35,38 @@ namespace ICT371525Y_School_Locker_App.Controllers
         }
 
         [HttpPost("submit")]
-        public async Task<IActionResult> Submit(
-            string IDNumber,
-            string Title,
-            string Name,
-            string Surname,
-            string Email,
-            string HomeAddress,
-            string PhoneNumber
-        )
+        public async Task<IActionResult> Submit(RegistrationViewModel model)
         {
-            if (await _context.Parents.AnyAsync(p => p.ParentIdnumber == long.Parse(IDNumber)))
+            if (await _context.Parents.AnyAsync(p => p.ParentIdnumber == long.Parse(model.IDNumber)))
             {
-                ModelState.AddModelError("", "Parent already exists.");
-                return RedirectToAction("Index");
+                ModelState.AddModelError("IDNumber", "A parent with this ID number already exists.");
+                return View("Index", model);
             }
 
             try
             {
                 var parent = new Parent
                 {
-                    ParentIdnumber = long.Parse(IDNumber),
-                    ParentTitle = Title,
-                    ParentName = Name,
-                    ParentSurname = Surname,
-                    ParentEmail = Email,
-                    ParentHomeAddress = HomeAddress,
-                    ParentPhoneNumber = long.Parse(PhoneNumber)
+                    ParentIdnumber = long.Parse(model.IDNumber),
+                    ParentTitle = model.Title,
+                    ParentName = model.Name,
+                    ParentSurname = model.Surname,
+                    ParentEmail = model.Email,
+                    ParentHomeAddress = model.HomeAddress,
+                    ParentPhoneNumber = long.Parse(model.PhoneNumber)
                 };
 
                 _context.Parents.Add(parent);
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = "Parent registration completed successfully.";
-                return RedirectToAction("Index", "Login");
+                TempData["Success"] = "Parent registration completed successfully!";
+                TempData.Keep("Success");
+                return RedirectToAction(nameof(Index), "Registration");
             }
             catch (Exception)
             {
                 ModelState.AddModelError("", "An error occurred during registration. Please try again.");
-                return RedirectToAction("Index");
+                return View("Index", model);
             }
         }
     }

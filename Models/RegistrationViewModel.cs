@@ -35,13 +35,13 @@ namespace ICT371525Y_School_Locker_App.Models
         [Required(ErrorMessage = "Phone number is required.")]
         [RegularExpression(@"^0\d{9}$", ErrorMessage = "Phone number must start with 0 and be 10 digits long.")]
 
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
 
-        public string StudentName { get; set; }
+        public string? StudentName { get; set; }
 
         public int? SelectedSchoolId { get; set; }
 
-        public string Grade { get; set; }
+        public string? Grade { get; set; }
 
         public List<SchoolViewModel> Schools { get; set; } = new();
     }

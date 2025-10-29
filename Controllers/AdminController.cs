@@ -116,7 +116,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             return View("Index", vm);
         }
 
-        // ✅ New endpoint for updating payment status
         [HttpPost("UpdatePaymentStatus")]
         public async Task<IActionResult> UpdatePaymentStatus(int studentId, string yearType, bool paid)
         {
@@ -167,34 +166,68 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 return BadRequest("Invalid locker ID.");
 
             var locker = await _context.Lockers.FirstOrDefaultAsync(l => l.LockerId == dto.LockerId);
-
             if (locker == null)
                 return NotFound("Locker not found.");
-            if (dto.YearType == "current")
-            {
-                locker.IsAdminApprovedCurrentBookingYear = true;
-            }
-            else if (dto.YearType == "following")
-            {
-                locker.IsAdminApprovedFollowingBookingYear = true;
-            }
-
-            await _context.SaveChangesAsync();
 
             var student = await _context.Students
                 .Include(s => s.Parent)
                 .FirstOrDefaultAsync(s => s.StudentId == dto.StudentID);
 
-            if (student?.Parent?.ParentEmail != null)
+            if (student == null)
+                return NotFound("Student not found.");
+
+            bool isApproved = false;
+            string message = string.Empty;
+
+            if (dto.YearType.Equals("current", StringComparison.OrdinalIgnoreCase))
+            {
+                if (student.PaidCurrentYear == false || student.PaidCurrentYear == null)
+                {
+                    message = "The parent payment setting for the current year has not been set. Please confirm payment before approving.";
+                    return Ok(new { showPopup = true, message });
+                }
+                else
+                {
+                    locker.IsAdminApprovedCurrentBookingYear = true;
+                    isApproved = true;
+                }
+            }
+            else if (dto.YearType.Equals("following", StringComparison.OrdinalIgnoreCase))
+            {
+                if (student.PaidFollowingYear == false || student.PaidFollowingYear == null)
+                {
+                    message = "The parent payment setting for the following year has not been set. Please confirm payment before approving.";
+                    return Ok(new { showPopup = true, message });
+                }
+                else
+                {
+                    locker.IsAdminApprovedFollowingBookingYear = true;
+                    isApproved = true;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (isApproved && student?.Parent?.ParentEmail != null)
             {
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
-                    "Locker Approval Confirmation",
-                    $"Dear Parent,\n\nLocker {locker.LockerNumber} for {student.StudentName} has been approved by the school admin."
+                    "Locker Assignment Confirmation",
+                    $@"
+            <p>Dear Parent,</p>
+
+            <p>Thank you for sending confirmation of payment.</p>
+
+            <p>We are pleased to confirm that <strong>Locker {locker.LockerNumber}</strong> 
+            has been successfully assigned to <strong>{student.StudentName}</strong> 
+            for the <strong>{dto.YearType}</strong> booking year.</p>
+       
+            <p>Kind regards,<br/>
+            <strong>School Locker Administration</strong></p>"
                 );
             }
 
-            return Ok("Locker approved successfully.");
+            return Ok(new { showPopup = false, message = "Locker approved successfully." });
         }
 
         [HttpPost("RemoveStudent")]
@@ -226,7 +259,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 return View("Index", model);
             }
 
-            // --- Precompute sets for flags ---
             var currentYearLockers = await _context.Lockers
                 .Where(l => (l.CurrentBookingYear ?? false) == true)
                 .Select(l => l.StudentIdCurrentBookingYear)
@@ -245,7 +277,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 .Distinct()
                 .ToListAsync();
 
-            // --- Query students in this school/grade ---
             var students = await _context.Students
                 .Where(s => s.SchoolId == model.SchoolId && s.GradesId == model.SelectedGradeId.Value)
                 .Select(s => new StudentDto
@@ -255,15 +286,12 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     StudentSchoolNumber = s.StudentSchoolNumber,
                     GradesId = s.GradesId,
                     SchoolId = s.SchoolId,
-
-                    // Use precomputed lists for fast lookups
                     HasCurrentYearLocker = currentYearLockers.Contains(s.StudentId),
                     HasFollowingYearLocker = followingYearLockers.Contains(s.StudentId),
                     IsOnWaitingList = waitingList.Contains(s.StudentId)
                 })
                 .ToListAsync();
 
-            // --- Apply filter logic ---
             switch (model.GradeFilter)
             {
                 case "Assigned":
@@ -382,7 +410,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
             bool isFinalGrade = student.GradesId == 24;
 
-            // --- Assigned lockers
             var lockers = await _context.Lockers
                 .Where(l =>
                     (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
@@ -417,7 +444,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 }
             }
 
-            // --- Waiting list
             var waitingQuery = _context.LockerWaitingLists
                 .Include(w => w.Grade)
                 .Include(w => w.School)
@@ -442,7 +468,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToListAsync();
 
-            // --- Flags
             bool hasCurrentAssigned = assigned.Any(a =>
                 a.GetType().GetProperty("YearType")?.GetValue(a)?.ToString() == "current");
 
@@ -452,7 +477,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             bool onCurrentWaiting = waiting.Any(w => w.YearType == "current");
             bool onFollowingWaiting = !isFinalGrade && waiting.Any(w => w.YearType == "following");
 
-            // --- Fetch ALL available lockers first
             var allCurrentAvailable = await _context.Lockers
                 .Where(l =>
                     l.SchoolId == student.SchoolId &&
@@ -464,16 +488,28 @@ namespace ICT371525Y_School_Locker_App.Controllers
             var allFollowingAvailable = new List<object>();
             if (!isFinalGrade)
             {
-                allFollowingAvailable = await _context.Lockers
-                    .Where(l =>
-                        l.SchoolId == student.SchoolId &&
-                        l.GradeId == student.GradesId &&
-                        (l.FollowingBookingYear == null || l.FollowingBookingYear == false))
-                    .Select(l => new { l.LockerId, l.LockerNumber })
-                    .ToListAsync<object>();
+                var nextGradeId = await _context.Grades
+                    .Where(g => g.GradeNumber >
+                        _context.Grades
+                            .Where(gr => gr.GradesId == student.GradesId)
+                            .Select(gr => gr.GradeNumber)
+                            .FirstOrDefault())
+                    .OrderBy(g => g.GradeNumber)
+                    .Select(g => g.GradesId)
+                    .FirstOrDefaultAsync();
+
+                if (nextGradeId != 0)
+                {
+                    allFollowingAvailable = await _context.Lockers
+                        .Where(l =>
+                            l.SchoolId == student.SchoolId &&
+                            l.GradeId == nextGradeId &&
+                            (l.FollowingBookingYear == null || l.FollowingBookingYear == false))
+                        .Select(l => new { l.LockerId, l.LockerNumber })
+                        .ToListAsync<object>();
+                }
             }
 
-            // --- Visible unassigned for UI (hide if waiting)
             var currentAvailable = (!hasCurrentAssigned && !onCurrentWaiting)
                 ? allCurrentAvailable
                 : new List<object>();
@@ -495,11 +531,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 waiting,
                 unassigned = new
                 {
-                    // for UI
                     current = currentAvailable,
                     following = followingAvailable,
-
-                    // for waiting-list assignment
                     allCurrent = allCurrentAvailable,
                     allFollowing = allFollowingAvailable
                 }
@@ -528,7 +561,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 int studentId = student.StudentId;
                 bool isFinalGrade = student.GradesId == 24;
 
-                // --- Assigned lockers
                 var lockers = await _context.Lockers
                     .Where(l =>
                         (l.StudentIdCurrentBookingYear == studentId && l.CurrentBookingYear == true) ||
@@ -563,7 +595,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     }
                 }
 
-                // --- Waiting list
                 var waitingQuery = _context.LockerWaitingLists
                     .Include(w => w.Grade)
                     .Include(w => w.School)
@@ -602,7 +633,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 var allCurrentAvailable = new List<object>();
                 var allFollowingAvailable = new List<object>();
 
-                // Always fetch current-year lockers
                 allCurrentAvailable = await _context.Lockers
                     .Where(l =>
                         l.SchoolId == student.SchoolId &&
@@ -611,16 +641,28 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     .Select(l => new { l.LockerId, l.LockerNumber })
                     .ToListAsync<object>();
 
-                // Only fetch following-year lockers if not final grade
                 if (!isFinalGrade)
                 {
-                    allFollowingAvailable = await _context.Lockers
-                        .Where(l =>
-                            l.SchoolId == student.SchoolId &&
-                            l.GradeId == student.GradesId &&
-                            (l.FollowingBookingYear == null || l.FollowingBookingYear == false))
-                        .Select(l => new { l.LockerId, l.LockerNumber })
-                        .ToListAsync<object>();
+                    var nextGradeId = await _context.Grades
+                        .Where(g => g.GradeNumber >
+                            _context.Grades
+                                .Where(gr => gr.GradesId == student.GradesId)
+                                .Select(gr => gr.GradeNumber)
+                                .FirstOrDefault())
+                        .OrderBy(g => g.GradeNumber)
+                        .Select(g => g.GradesId)
+                        .FirstOrDefaultAsync();
+
+                    if (nextGradeId != 0)
+                    {
+                        allFollowingAvailable = await _context.Lockers
+                            .Where(l =>
+                                l.SchoolId == student.SchoolId &&
+                                l.GradeId == nextGradeId &&
+                                (l.FollowingBookingYear == null || l.FollowingBookingYear == false))
+                            .Select(l => new { l.LockerId, l.LockerNumber })
+                            .ToListAsync<object>();
+                    }
                 }
 
                 if (!hasCurrentAssigned && !onCurrentWaiting)

@@ -7,6 +7,8 @@
 <h2>Parent Registration</h2>
 
 <form asp-action="Submit" method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
     <div class="form-group">
         <label asp-for="IDNumber"></label>
         <input asp-for="IDNumber" class="form-control" />
@@ -52,8 +54,43 @@
     <button type="submit" class="btn btn-primary">Register Parent</button>
 </form>
 
-@section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+@if (TempData["Success"] != null)
+{
+    <!-- Bootstrap Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center border-success shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title w-100" id="successModalLabel">Registration Successful</h5>
+                </div>
+                <div class="modal-body">
+                    <p>@TempData["Success"]</p>
+                    <p class="text-muted">You will be redirected to the login page shortly...</p>
+                    <!-- OK button to redirect immediately -->
+                    <button id="redirectNow" type="button" class="btn btn-success mt-2">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var modalElement = document.getElementById('successModal');
+            if (modalElement) {
+                var myModal = new bootstrap.Modal(modalElement);
+                myModal.show();
+
+                // Auto redirect after 3 seconds
+                var redirectTimer = setTimeout(function () {
+                    window.location.href = '/Login/Index';
+                }, 3000);
+
+                // Redirect immediately when OK is clicked
+                document.getElementById('redirectNow').addEventListener('click', function () {
+                    clearTimeout(redirectTimer);
+                    window.location.href = '/Login/Index';
+                });
+            }
+        });
+    </script>
 }

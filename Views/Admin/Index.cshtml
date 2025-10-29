@@ -36,6 +36,7 @@
     </div>
 
     <div class="row">
+
         <!-- Parent Section -->
         <div class="col-md-12">
             <div id="parentSection" style="@(Model.ShowParentSection ? "display:block;" : "display:none;")">
@@ -193,7 +194,6 @@
                 if (!res.ok) throw new Error(await res.text());
                 const data = await res.json();
 
-                // Normalize to an array whether API returns a dictionary or an array
                 let students = Array.isArray(data)
                     ? data
                     : Object.entries(data).map(([id, studentData]) => ({
@@ -201,10 +201,8 @@
                           ...studentData
                       }));
 
-                // 🔑 enforce ordering on the client (object keys reorder otherwise)
                 students.sort(compareByEarliestWaiting);
 
-                // Render only the students that actually have content for the chosen filter
                 for (const student of students) {
                     const innerHtml = buildStudentContent(student, filter);
                     const card = renderStudentCard(student, innerHtml);
@@ -248,13 +246,13 @@
                         const isOnCurrentWaiting = student.waiting?.some(w => w.yearType === "current");
                         const isOnFollowingWaiting = student.waiting?.some(w => w.yearType === "following");
 
-                        // 🧩 Filter out lockers for years where the student is on the waiting list
+                        //Filter out lockers for years where the student is on the waiting list
                         const filteredUnassigned = {
                             current: isOnCurrentWaiting ? [] : (student.unassigned.current || []),
                             following: isOnFollowingWaiting ? [] : (student.unassigned.following || [])
                         };
 
-                        // 🧩 Only render section if there's something to show
+                        //Only render section if there's something to show
                         const hasVisibleLockers =
                             (filteredUnassigned.current?.length || 0) > 0 ||
                             (filteredUnassigned.following?.length || 0) > 0;
@@ -348,7 +346,7 @@
             let html = `<h6>Waiting List</h6>`;
 
             waiting.forEach(wl => {
-                // ✅ Check availability based on requested year type
+                //Check availability based on requested year type
                     const hasAvailable =
                         (wl.yearType === "current" && ((unassigned?.allCurrent?.length ?? unassigned?.current?.length ?? 0) > 0)) ||
                         (wl.yearType === "following" && ((unassigned?.allFollowing?.length ?? unassigned?.following?.length ?? 0) > 0));
@@ -456,9 +454,36 @@
             await fetch(`${window.baseUrl}/Locker/UnassignLocker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lockerId,studentId,yearType})});
             refreshSearch(studentId);
         }
-        async function approveLocker(lockerId,studentId,yearType){
-            await fetch(`${window.baseUrl}/Admin/ApproveLocker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lockerId,studentId,yearType})});
-            refreshSearch(studentId);
+        async function approveLocker(lockerId, studentId, yearType) {
+            try {
+                const res = await fetch(`${window.baseUrl}/Admin/ApproveLocker`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ lockerId, studentId, yearType })
+                });
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    alert("Error approving locker: " + errText);
+                    return;
+                }
+
+                const result = await res.json();
+
+                // Show popup if showPopup = true
+                if (result.showPopup) {
+                    alert(result.message);
+                    return; // don't refresh since approval was not completed
+                }
+
+                // Otherwise show success and refresh UI
+                alert(result.message);
+                refreshSearch(studentId);
+
+            } catch (err) {
+                console.error("Error approving locker:", err);
+                alert("Error approving locker: " + err.message);
+            }
         }
         async function cancelWaitingList(studentId,schoolId,gradeId,yearType){
             await fetch(`${window.baseUrl}/api/LockerWaitingList/Unassign`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({studentId,schoolId,gradeId,yearType})});

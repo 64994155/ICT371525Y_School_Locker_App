@@ -129,6 +129,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
         [HttpGet("adminAvailable")]
         public async Task<IActionResult> GetAdminAvailableLockers(int schoolId, int gradeId, string yearType)
         {
+
+            //Blaine Note: May not be required as admin should not be cut off from any dates....
             //Normal behaviour
             var today = DateTime.Now;
 
@@ -225,8 +227,20 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
                     "Locker Assignment Cancellation",
-                    $"Dear Parent,\n\nThe locker assignment for {student.StudentName} (Locker {locker.LockerNumber}) " +
-                    $"for the {dto.YearType} booking year has been canceled as per request.\n\nRegards,\nSchool Admin"
+                    $@"
+                    <p>Dear Parent,</p>
+
+                    <p>We would like to inform you that the locker assignment for 
+                    <strong>{student.StudentName}</strong> 
+                    (Locker <strong>{locker.LockerNumber}</strong>) 
+                    for the <strong>{dto.YearType}</strong> booking year 
+                    has been <strong>cancelled</strong> as per your request.</p>
+
+                    <p>If this was done in error or you wish to request a new locker assignment, 
+                    please contact the school administration for assistance.</p>
+
+                    <p>Kind regards,<br/>
+                    <strong>School Locker Administration</strong></p>"
                 );
 
                 return Ok("Locker unassigned successfully and cancellation email sent.");
@@ -260,7 +274,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             if (string.IsNullOrEmpty(student.Parent?.ParentEmail))
                 return BadRequest("Parent email not available.");
 
-            // --- Assign locker ---
             DateTime assignedDate = DateTime.Now;
             string formattedDate = string.Empty;
             string bookingYearLabel = dto.YearType?.ToUpper() ?? "CURRENT";
@@ -292,21 +305,25 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 await _context.SaveChangesAsync();
 
-                // --- Build email message ---
                 string emailBody = $@"
-                    Dear Parent,
+                    <p>Dear Parent,</p>
                     
-                    Locker {locker.LockerNumber} has been assigned to {student.StudentName}
-                    for the {bookingYearLabel} booking year ({formattedDate}).
+                    <p>We are pleased to inform you that <strong>Locker {locker.LockerNumber}</strong> 
+                    has been assigned to <strong>{student.StudentName}</strong> for the 
+                    <strong>{bookingYearLabel}</strong> booking year 
+                    (<em>{formattedDate}</em>).</p>
                     
-                    Please reply with proof of payment for the R100 usage fee.
-
-                    Kindly note, Failure to pay fee within 30 days of this application 
-                    will result in locker deallocation.
+                    <p>Please reply to this email with proof of payment for the 
+                    <strong>R100 usage fee</strong>.</p>
                     
-                    Kind regards,
-                    School Locker Administration
-                    ";
+                    <p><em>Kindly note:</em> Failure to make payment within 
+                    <strong>30 days</strong> of this allocation will result in the locker 
+                    being <strong>deallocated</strong>.</p>
+                    
+                    <p>Thank you for your prompt attention to this matter.</p>
+                    
+                    <p>Kind regards,<br/>
+                    <strong>School Locker Administration</strong></p>";
 
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
@@ -362,7 +379,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
             bool isCurrentYear = dto.YearType?.ToLower() == "current";
             bool isFollowingYear = dto.YearType?.ToLower() == "following";
 
-            // 🔎 check waiting list
             var waitingListItem = await _context.LockerWaitingLists.FirstOrDefaultAsync(wl =>
                 wl.StudentId == dto.StudentID &&
                 wl.SchoolId == locker.SchoolId &&
@@ -379,7 +395,6 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 _context.LockerWaitingLists.Remove(waitingListItem);
             }
 
-            // 🔧 assign locker based on year type
             if (isCurrentYear)
             {
                 locker.CurrentBookingYear = true;
@@ -399,22 +414,41 @@ namespace ICT371525Y_School_Locker_App.Controllers
             {
                 await _context.SaveChangesAsync();
 
-                // 🔔 send emails
                 if (wasOnWaitingList)
                 {
                     await EmailHelper.SendEmailAsync(
                         student.Parent.ParentEmail,
                         "Waiting List Update",
-                        $"Dear Parent,\n\n{student.StudentName} has been removed from the waiting list for " +
-                        $"{(isCurrentYear ? "the current year" : "the following year")} because a locker has been assigned."
+                        $@"
+                        <p>Dear Parent,</p>
+
+                        <p>We are pleased to inform you that <strong>{student.StudentName}</strong> 
+                        has been <strong>removed from the waiting list</strong> for 
+                        {(isCurrentYear ? "<strong>the current year</strong>" : "<strong>the following year</strong>")}, 
+                        as a locker has now been successfully assigned.</p>
+
+                        <p>Thank you for your patience during the waiting process. 
+                        You will receive further details about the locker assignment shortly.</p>
+
+                        <p>Kind regards,<br/>
+                        <strong>School Locker Administration</strong></p>"
                     );
                 }
 
                 await EmailHelper.SendEmailAsync(
                     student.Parent.ParentEmail,
                     "Locker Assignment Confirmation",
-                    $"Dear Parent,\n\nLocker {locker.LockerNumber} has been successfully assigned to {student.StudentName} " +
-                    $"for the {dto.YearType} booking year."
+                    $@"
+                    <p>Dear Parent,</p>
+
+                    <p>Thank you for sending confirmation of payment</p>
+
+                    <p>We are pleased to confirm that <strong>Locker {locker.LockerNumber}</strong> 
+                    has been successfully assigned to <strong>{student.StudentName}</strong> 
+                    for the <strong>{dto.YearType}</strong> booking year.</p>
+               
+                    <p>Kind regards,<br/>
+                    <strong>School Locker Administration</strong></p>"                
                 );
 
                 return Ok("Locker assigned successfully. Emails sent for waiting list removal and locker assignment.");
