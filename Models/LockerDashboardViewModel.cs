@@ -7,7 +7,7 @@
         public List<LockerSchoolViewModel> Schools { get; set; } = new();
         public List<GradeCount> LockerByGrade { get; set; } = new();
         public List<LockerUsageDetail> LockerUsageGrade8and11 { get; set; } = new();
-        public int LockersBookedJanToJun { get; set; } = 0;
+        public int LockersBooked { get; set; } = 0;
     }
 
     public class LockerSchoolViewModel

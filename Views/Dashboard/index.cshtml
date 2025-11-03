@@ -12,7 +12,7 @@
             </h2>
 
             <!-- Back button -->
-            <a asp-controller="Admin" asp-action="Index" asp-route-adminId="@ViewBag.AdminId"
+            <a asp-controller="Admin" asp-action="Index" asp-route-adminId="1"
                class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left-circle"></i> Back to Admin Page
             </a>
@@ -106,53 +106,55 @@
 
         <!-- Locker Usage Details -->
         <h4 class="mt-4 mb-3">
-            <i class="bi bi-graph-up-arrow text-success"></i> Locker Usage Details
+            <i class="bi bi-graph-up-arrow text-success"></i> Locker Usage Details (Grouped by Grade)
         </h4>
-        <table class="table table-bordered table-striped">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Booking Year</th>
-                    <th>Parent Email</th>
-                    <th>Student School Num</th>
-                    <th>Grade</th>
-                    <th>Locker Number</th>
-                    <th>Assigned Date</th>
-                    <th>Admin Approved</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (Model.LockerUsageGrade8and11 != null && Model.LockerUsageGrade8and11.Any())
-                {
-                    foreach (var item in Model.LockerUsageGrade8and11)
-                    {
+
+        @if (ViewBag.GroupedLockers != null)
+        {
+            foreach (var group in (IDictionary<string, List<ICT371525Y_School_Locker_App.Models.LockerUsageDetail>>)ViewBag.GroupedLockers)
+            {
+                <h5 class="mt-3 text-primary">Grade @group.Key</h5>
+
+                <table class="table table-bordered table-striped">
+                    <thead class="table-secondary">
                         <tr>
-                            <td>@item.BookingYear</td>
-                            <td>@item.ParentEmail</td>
-                            <td>@item.StudentSchoolNumber</td>
-                            <td>@item.GradeNumber</td>
-                            <td>@item.LockerNumber</td>
-                            <td>@item.AssignedDate?.ToString("yyyy-MM-dd")</td>
-                            <td>
-                                @if (item.IsAdminApproved)
-                                {
-                                    <span class="badge bg-success">Yes</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark">No</span>
-                                }
-                            </td>
+                            <th>Booking Year</th>
+                            <th>Parent Email</th>
+                            <th>Student School Num</th>
+                            <th>Locker Number</th>
+                            <th>Assigned Date</th>
+                            <th>Admin Approved</th>
                         </tr>
-                    }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">
-                            No results for selected filters.
-                        </td>
-                    </tr>
-                }
+                    </thead>
+                    <tbody>
+                        @foreach (var item in group.Value)
+                        {
+                            <tr>
+                                <td>@item.BookingYear</td>
+                                <td>@item.ParentEmail</td>
+                                <td>@item.StudentSchoolNumber</td>
+                                <td>@item.LockerNumber</td>
+                                <td>@item.AssignedDate?.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    @if (item.IsAdminApproved)
+                                    {
+                                        <span class="badge bg-success">Yes</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">No</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+        else
+        {
+            <p class="text-muted text-center">No results for selected filters.</p>
+        }
             </tbody>
         </table>
 
@@ -164,7 +166,7 @@
             <div class="col-md-6">
                 <p class="fw-bold">
                     📦 Total Assigned Lockers (@ViewBag.SelectedYear):
-                    @Model.LockersBookedJanToJun
+                    @Model.LockersBooked
                 </p>
             </div>
             <div class="col-md-6 text-end">

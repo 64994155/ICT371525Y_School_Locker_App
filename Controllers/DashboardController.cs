@@ -19,9 +19,9 @@ namespace ICT371525Y_School_Locker_App.Controllers
         public async Task<IActionResult> Index(int adminId, int? year, int? gradeId, bool? isAdminApproved)
         {
             int selectedYear = year ?? DateTime.Now.Year;
-
             ViewBag.AdminId = adminId;
 
+            // --- Base query joining related tables
             var lockerUsageQuery =
                 from parent in _context.Parents
                 join student in _context.Students on parent.ParentId equals student.ParentId
@@ -39,7 +39,8 @@ namespace ICT371525Y_School_Locker_App.Controllers
                     FollowingLocker = lf
                 };
 
-            var usageDetails = lockerUsageQuery
+            // --- Build full list of usage details
+            var allUsageDetails = lockerUsageQuery
                 .AsEnumerable()
                 .SelectMany(x =>
                 {
@@ -77,16 +78,23 @@ namespace ICT371525Y_School_Locker_App.Controllers
 
                     return list;
                 })
+                .ToList();
+
+            int totalLockersForYear = allUsageDetails.Count(x => x.BookingYear == selectedYear);
+
+            // --- Apply filters (grade/admin approval) only to display list
+            var filteredUsageDetails = allUsageDetails
                 .Where(x => x.BookingYear == selectedYear);
 
             if (gradeId.HasValue && gradeId.Value > 0)
-                usageDetails = usageDetails.Where(x => x.GradeNumber == gradeId.Value.ToString());
+                filteredUsageDetails = filteredUsageDetails.Where(x => x.GradeNumber == gradeId.Value.ToString());
 
             if (isAdminApproved.HasValue)
-                usageDetails = usageDetails.Where(x => x.IsAdminApproved == isAdminApproved.Value);
+                filteredUsageDetails = filteredUsageDetails.Where(x => x.IsAdminApproved == isAdminApproved.Value);
 
-            var lockerUsageResults = usageDetails.ToList();
+            var lockerUsageResults = filteredUsageDetails.ToList();
 
+            // --- Group summaries for filtered display
             var lockerByGrade = lockerUsageResults
                 .GroupBy(x => x.GradeNumber)
                 .Select(g => new GradeCount
@@ -96,14 +104,21 @@ namespace ICT371525Y_School_Locker_App.Controllers
                 })
                 .ToList();
 
+            var groupedLockers = lockerUsageResults
+                .GroupBy(x => x.GradeNumber)
+                .OrderBy(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // --- Build model
             var model = new LockerDashboardViewModel
             {
                 LockerUsageGrade8and11 = lockerUsageResults,
                 LockerByGrade = lockerByGrade,
-                LockersBookedJanToJun = lockerUsageResults.Count
+                LockersBooked = totalLockersForYear 
             };
 
             ViewBag.SelectedYear = selectedYear;
+            ViewBag.GroupedLockers = groupedLockers;
 
             return View(model);
         }
